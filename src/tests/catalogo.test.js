@@ -199,7 +199,14 @@ describe('Eliminar el catalogo', () => {
         const resultado = await catalogoServi.eliminar(1);
         console.log(resultado);
         expect(catalogoRepo.remove).toHaveBeenCalledWith(1);
-        console.log(catalogoMock);
-        
     })
+})
+
+
+test('Debe lanzar 409 cuando el vehiculo ya existe', async () => {
+    catalogoRepo.findByModeloVersionAnio.mockResolvedValue({
+        id: 1
+    });
+    await expect(catalogoServi.crear(catalogoMockPost[0]))
+    .rejects.toThrow();
 })
