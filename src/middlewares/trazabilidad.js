@@ -1,4 +1,4 @@
-// Middleware de trazabilidad: asigna un idTraza único a cada petición (Semana 10, Slide 31)
+// Middleware de trazabilidad: asigna un identificador único por petición — Semana 10 (Slide 31)
 const { randomUUID } = require('crypto');
 
 module.exports = (req, res, next) => {
