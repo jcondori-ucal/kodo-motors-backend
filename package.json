@@ -15,7 +15,8 @@
     "test:postman": "npx newman run postman/kodo-motors-manejo-errores.postman_collection.json",
     "bd:levantar": "docker compose up -d",
     "bd:detener": "docker compose down",
-    "bd:reiniciar": "docker compose down -v && docker compose up -d"
+    "bd:reiniciar": "docker compose down -v && docker compose up -d",
+    "test:reservas": "jest --runInBand tests/unit/reservas"
   },
   "keywords": [
     "kodo-motors",

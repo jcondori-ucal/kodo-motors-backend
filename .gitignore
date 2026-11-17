@@ -18,3 +18,5 @@ __MACOSX/
 Thumbs.db
 *.log
 npm-debug.log*
+
+coverage/
