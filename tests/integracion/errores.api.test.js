@@ -70,7 +70,8 @@ describe('400 · id inválido en la ruta', () => {
   ])('repuestos · id %s', async (_nombre, id) => {
     const res = await request(app).get(`/api/repuestos/${id}`);
 
-    esperarError(res, 400, 'SOLICITUD_INVALIDA');
+    esperarError(res, 400, 'VALIDACION');
+    expect(camposConError(res)).toEqual(['id']);
     expect(repuestosRepo.findById).not.toHaveBeenCalled(); // no llegó a consultar la BD
   });
 
