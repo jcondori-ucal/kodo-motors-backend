@@ -7,12 +7,16 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "jest --runInBand",
+    "test:verbose": "jest --runInBand --verbose",
+    "test:unit": "jest --runInBand tests/unit",
+    "test:integracion": "jest --runInBand tests/integracion",
+    "test:suite": "node test-suite.js",
+    "cobertura": "jest --runInBand --coverage",
     "test:postman": "npx newman run postman/kodo-motors-manejo-errores.postman_collection.json",
     "bd:levantar": "docker compose up -d",
     "bd:detener": "docker compose down",
     "bd:reiniciar": "docker compose down -v && docker compose up -d",
-    "test:unit": "jest --runInBand tests/unit",
-    "cobertura": "jest --runInBand --coverage tests/unit"
+    "test:reservas": "jest --runInBand tests/unit/reservas"
   },
   "keywords": [
     "kodo-motors",
@@ -24,6 +28,12 @@
   "author": "Equipos E03, u2 y Grupo1-4 · EE2 Fundamentos de Desarrollo Back-End, UCAL",
   "license": "ISC",
   "private": true,
+  "jest": {
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/tests"
+    ]
+  },
   "engines": {
     "node": ">=18"
   },
@@ -35,17 +45,8 @@
     "mysql2": "~3.24.6"
   },
   "devDependencies": {
-    "jest": "^29.7.0",
-    "nodemon": "~3.1.14"
-  },
-  "jest": {
-    "testEnvironment": "node",
-    "roots": [
-      "<rootDir>/tests"
-    ],
-    "collectCoverageFrom": [
-      "src/models/reserva.model.js",
-      "src/services/reserva.service.js"
-    ]
+    "jest": "^30.5.2",
+    "nodemon": "~3.1.14",
+    "supertest": "^7.3.2"
   }
 }

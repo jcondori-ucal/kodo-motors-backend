@@ -5,6 +5,9 @@ node_modules/
 .env
 .env.zip
 
+# Reporte de cobertura de Jest (npm run cobertura)
+coverage/
+
 # Carpetas de trabajo locales de los equipos
 MODULOS_EQUIPO/
 .xd

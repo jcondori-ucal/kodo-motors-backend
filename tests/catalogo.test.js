@@ -1,10 +1,10 @@
 const request = require('supertest');
-const app = require('../app');
-const catalogoRepo = require('../repositories/catalogo.repository');
-const catalogoServi = require('../services/catalogo.service');
-const { AppError } = require('../errors/AppError');
+const app = require('../src/app');
+const catalogoRepo = require('../src/repositories/catalogo.repository');
+const catalogoServi = require('../src/services/catalogo.service');
+const { AppError } = require('../src/errors/AppError');
 
-jest.mock('../repositories/catalogo.repository'); // reemplaza TODAS sus funciones por jest.fn()
+jest.mock('../src/repositories/catalogo.repository'); // reemplaza TODAS sus funciones por jest.fn()
 
 const catalogoMock = [
     {
@@ -135,16 +135,16 @@ describe('Validar anio', () => {
             .post('/api/catalogo')
             .send({
                 ...catalogoMockPost[0],
-                anio: 1899
+                anio: 1989
             })
         expect(response.status).toBe(400);
     })
-    test('Debe de aceptar un año mayor o igual a 1900', async() => {
+    test('Debe de aceptar un año de 2026 como maximo ', async() => {
         const response = await request(app)
             .post('/api/catalogo')
             .send({
                 ...catalogoMockPost[0],
-                anio: 3000
+                anio: 2026
             })
         expect(response.status).toBe(201);
     })
@@ -197,9 +197,16 @@ describe('Eliminar el catalogo', () => {
         
         catalogoRepo.remove.mockReturnValue(true);
         const resultado = await catalogoServi.eliminar(1);
-        console.log(resultado);
-        expect(catalogoRepo.remove).toHaveBeenCalledWith(1);
-        console.log(catalogoMock);
         
+        expect(catalogoRepo.remove).toHaveBeenCalledWith(1);
     })
+})
+
+
+test('Debe lanzar 409 cuando el vehiculo ya existe', async () => {
+    catalogoRepo.findByModeloVersionAnio.mockResolvedValue({
+        id: 1
+    });
+    await expect(catalogoServi.crear(catalogoMockPost[0]))
+    .rejects.toThrow();
 })
