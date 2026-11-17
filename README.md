@@ -319,3 +319,4 @@ El Grupo 3 trabajó los módulos de **Repuestos** y **Catálogo** en la rama `Gr
 npm install
 npm test
 ```
+profe fusione a main por error no nos jalee jaja :(
