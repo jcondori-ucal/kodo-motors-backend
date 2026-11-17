@@ -10,7 +10,9 @@
     "test:postman": "npx newman run postman/kodo-motors-manejo-errores.postman_collection.json",
     "bd:levantar": "docker compose up -d",
     "bd:detener": "docker compose down",
-    "bd:reiniciar": "docker compose down -v && docker compose up -d"
+    "bd:reiniciar": "docker compose down -v && docker compose up -d",
+    "test:unit": "jest --runInBand tests/unit",
+    "cobertura": "jest --runInBand --coverage tests/unit"
   },
   "keywords": [
     "kodo-motors",
@@ -33,6 +35,17 @@
     "mysql2": "~3.24.6"
   },
   "devDependencies": {
+    "jest": "^29.7.0",
     "nodemon": "~3.1.14"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/tests"
+    ],
+    "collectCoverageFrom": [
+      "src/models/reserva.model.js",
+      "src/services/reserva.service.js"
+    ]
   }
 }
