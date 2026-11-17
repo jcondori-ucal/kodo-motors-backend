@@ -18,6 +18,7 @@ Evidencia Evaluativa 2): sedes, servicios, catálogo de vehículos, reservas, re
 8. [Endpoints principales](#8-endpoints-principales)
 9. [Base de datos](#9-base-de-datos)
 10. [Observaciones y problemas resueltos durante la integración](#10-observaciones-y-problemas-resueltos-durante-la-integración)
+11. [EE3 · Validaciones, pruebas y documentación (Grupo 3)](#11-ee3--validaciones-pruebas-y-documentación-grupo-3)
 
 ---
 
@@ -110,7 +111,12 @@ kodo-motor-backend/
 │   ├── middlewares/           # validarId, manejarErrores
 │   ├── validators/            # reglas de express-validator por recurso
 │   └── utils/                 # HttpError, validaciones
-├── test-suite.js              # npm test
+├── tests/                     # npm test (Jest + Supertest)
+│   ├── helpers/api.js         # app, esperarError y ayudas compartidas
+│   ├── unit/                  # clases de error y manejador central
+│   └── integracion/           # la API por HTTP, con el repositorio simulado
+├── docs/                      # documentación técnica y registro de pruebas
+├── test-suite.js              # npm run test:suite (verificación de la EE2)
 ├── docker-compose.yml         # MySQL 8.4 y Adminer
 └── .env.example               # qué variables hay que definir (sin credenciales)
 ```
@@ -127,6 +133,9 @@ kodo-motor-backend/
 | MySQL | 8.4 | Base de datos relacional, en un contenedor Docker |
 | Docker Compose | — | Levanta MySQL y Adminer |
 | nodemon | 3.1 | Reinicia la API al guardar cambios |
+| express-validator | 7.3 | Valida y limpia los datos de entrada |
+| Jest | 30 | Pruebas automáticas |
+| Supertest | 7.3 | Peticiones HTTP a la API dentro de las pruebas |
 | Postman | — | Pruebas de los endpoints |
 
 ## 6. Instalación
@@ -168,7 +177,10 @@ Comprobación rápida: `GET http://localhost:4000/api/salud`.
 |---|---|
 | `npm run dev` | API con reinicio automático |
 | `npm start` | API sin nodemon |
-| `npm test` | 61 pruebas automáticas, sin necesidad de base de datos |
+| `npm test` | Pruebas automáticas con Jest y Supertest, sin necesidad de base de datos |
+| `npm run test:unit` / `test:integracion` | Solo las pruebas unitarias o solo las de integración |
+| `npm run cobertura` | Pruebas con reporte de cobertura |
+| `npm run test:suite` | 61 pruebas de verificación de la EE2 (`test-suite.js`) |
 | `npm run bd:levantar` / `bd:detener` | Levanta o detiene MySQL |
 | `npm run bd:reiniciar` | Borra la base y la vuelve a crear desde `database/` |
 
@@ -208,7 +220,7 @@ Formato de error único y seguro en toda la API (Semana 10):
 }
 ```
 
-En sedes, servicios, catálogo y reservas, los errores de formato llegan así, por campo. Las reglas
+En sedes, servicios, catálogo, reservas y repuestos, los errores de formato llegan así, por campo. Las reglas
 que consultan la base responden `{ "mensaje": "..." }`, a veces con `errores` como lista de textos.
 
 La bandera de baja (`activo` / `activa`) **no se envía** en `POST` ni `PUT`: solo cambia con `DELETE`.
@@ -281,3 +293,29 @@ En ese caso, en el `.env`: `DB_PORT=3306` (o el puerto de tu MySQL).
 - Las ramas que no llegaron a `main` en sus repos originales se conservan como
   `historial/u2/archivo-reservas`, `historial/u2/jeff` y `historial/g14/feature/encuestas-qa-docs`.
 - Cada paso de la fusión es un commit aparte con el formato `[TAG] módulo: descripción`.
+
+## 11. EE3 · Validaciones, pruebas y documentación (Grupo 3)
+
+El Grupo 3 trabajó los módulos de **Repuestos** y **Catálogo** en la rama `Grupo_3-ee3`.
+
+| Qué se hizo | Dónde está |
+|---|---|
+| Validaciones de repuestos con `express-validator` (obligatorios, formatos, tipos y rangos) | `src/validators/repuestos.validators.js` |
+| Mismo formato de error en repuestos y catálogo: `errores: [{ campo, mensaje }]` | `src/routes/repuestos.routes.js` |
+| Base de pruebas con Jest y Supertest | `package.json`, `tests/helpers/api.js` |
+| Pruebas unitarias y de integración | `tests/unit/`, `tests/integracion/` |
+| Pruebas funcionales en Postman con aserciones (`pm.test`) | `postman/kodo-motors-grupo3-repuestos-catalogo.postman_collection.json` |
+
+**Documentación**
+
+- [Documentación técnica de Repuestos y Catálogo](docs/API_REPUESTOS_CATALOGO.md): endpoints,
+  parámetros, cuerpos, ejemplos de éxito y de error, y códigos HTTP.
+- [Pruebas y registro de errores](docs/PRUEBAS_Y_REGISTRO_DE_ERRORES.md): cómo ejecutar las
+  pruebas, tabla de casos, resultados, errores encontrados y su corrección.
+
+**Probar en un minuto** (sin base de datos):
+
+```bash
+npm install
+npm test
+```
