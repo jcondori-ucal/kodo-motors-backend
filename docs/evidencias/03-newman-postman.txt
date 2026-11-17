@@ -1,0 +1,392 @@
+$ npx newman run postman/kodo-sedes-servicios-pruebas.postman_collection.json --env-var apiKey=<API_KEY del .env>
+
+Corrida contra la API real (npm start, puerto 4000) conectada a MySQL 8.4.11 en Docker (contenedor kodo_mysql, base kodo_db).
+Fecha: 2026-11-16 20:35
+
+newman
+
+Kodo Motors · Sedes y Servicios · Pruebas (Semana 11)
+
+□ 00 · Seguridad (401 y 403)
+└ S01 · GET sedes sin x-api-key → 401
+  GET http://localhost:4000/api/sedes [401 Unauthorized, 447B, 35ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 401
+  √  tipo = NO_AUTENTICADO
+  √  mensaje: Falta x-api-key
+
+└ S02 · GET servicios con llave equivocada → 401
+  GET http://localhost:4000/api/servicios [401 Unauthorized, 451B, 4ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 401
+  √  tipo = NO_AUTENTICADO
+  √  mensaje: Llave inválida
+
+└ S03 · POST sedes sin credencial y con datos malos → 401 (no 400)
+  POST http://localhost:4000/api/sedes [401 Unauthorized, 448B, 6ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 401
+  √  tipo = NO_AUTENTICADO
+
+└ S04 · POST servicios con rol recepcion → 403
+  POST http://localhost:4000/api/servicios [403 Forbidden, 450B, 4ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 403
+  √  tipo = SIN_PERMISO
+  √  mensaje: Requiere rol: admin
+
+└ S05 · DELETE sede con llave válida pero sin rol → 403
+  DELETE http://localhost:4000/api/sedes/1 [403 Forbidden, 450B, 5ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 403
+  √  tipo = SIN_PERMISO
+
+└ S06 · GET sedes solo con la llave → 200 (leer no exige rol)
+  GET http://localhost:4000/api/sedes [200 OK, 953B, 8ms]
+  √  Responde en menos de 1000 ms
+  √  Estado 200
+  √  devuelve un arreglo
+
+□ 01 · Sedes · flujo completo (positivos)
+└ P01 · Listar sedes → 200
+  GET http://localhost:4000/api/sedes [200 OK, 953B, 7ms]
+  √  Responde en menos de 1000 ms
+  √  Estado 200
+  √  incluye Kodo Surquillo del seed
+  √  todas están activas
+
+└ P02 · Filtrar por distrito → 200
+  GET http://localhost:4000/api/sedes?distrito=Surquillo [200 OK, 543B, 13ms]
+  √  Responde en menos de 1000 ms
+  √  Estado 200
+  √  solo sedes de Surquillo
+
+└ P03 · Crear sede → 201
+  POST http://localhost:4000/api/sedes [201 Created, 540B, 43ms]
+  √  Responde en menos de 1000 ms
+  √  Estado 201
+  √  guarda el id para las siguientes peticiones
+  √  completa los segundos de las horas
+  √  nace activa
+
+└ P04 · Consultar la sede creada → 200
+  GET http://localhost:4000/api/sedes/4 [200 OK, 535B, 7ms]
+  √  Responde en menos de 1000 ms
+  √  Estado 200
+  √  es la sede creada
+
+└ P05 · Actualizar solo el horario de cierre → 200
+  PUT http://localhost:4000/api/sedes/4 [200 OK, 535B, 19ms]
+  √  Responde en menos de 1000 ms
+  √  Estado 200
+  √  cambió el cierre
+  √  conservó la apertura
+
+└ P06 · Dar de baja la sede → 204
+  DELETE http://localhost:4000/api/sedes/4 [204 No Content, 224B, 22ms]
+  √  Responde en menos de 1000 ms
+  √  Estado 204
+  √  sin cuerpo
+
+└ P07 · La sede dada de baja ya no existe → 404
+  GET http://localhost:4000/api/sedes/4 [404 Not Found, 457B, 16ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 404
+  √  tipo = NO_ENCONTRADO
+
+└ P08 · Borrado lógico: sigue en la base con activa=false → 200
+  GET http://localhost:4000/api/sedes?incluir_inactivos=true [200 OK, 1.16kB, 9ms]
+  √  Responde en menos de 1000 ms
+  √  Estado 200
+  √  la fila se conserva con activa en false
+
+□ 02 · Sedes · validaciones y errores (negativos y límites)
+└ N01 · Body vacío → 400 con los 6 obligatorios
+  POST http://localhost:4000/api/sedes [400 Bad Request, 839B, 10ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  tipo = VALIDACION
+  √  errores[] señala: nombre, distrito, direccion, telefono, hora_apertura, hora_cierre
+
+└ N02 · Teléfono de 8 dígitos (límite inferior) → 400
+  POST http://localhost:4000/api/sedes [400 Bad Request, 560B, 9ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  errores[] señala: telefono
+
+└ N03 · Teléfono de 10 dígitos (límite superior) → 400
+  POST http://localhost:4000/api/sedes [400 Bad Request, 560B, 10ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  errores[] señala: telefono
+
+└ N04 · Apertura igual al cierre (regla de negocio) → 400
+  POST http://localhost:4000/api/sedes [400 Bad Request, 551B, 6ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  errores[] señala: hora_apertura
+
+└ N05 · Hora con formato inválido → 400
+  POST http://localhost:4000/api/sedes [400 Bad Request, 535B, 5ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  errores[] señala: hora_cierre
+
+└ N06 · Enviar activa en el body → 400
+  POST http://localhost:4000/api/sedes [400 Bad Request, 542B, 5ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  errores[] señala: activa
+
+└ N07 · Campo que no existe → 400
+  POST http://localhost:4000/api/sedes [400 Bad Request, 521B, 6ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  errores[] señala: gerente
+
+└ N08 · JSON mal formado → 400
+  POST http://localhost:4000/api/sedes [400 Bad Request, 535B, 6ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  tipo = SOLICITUD_INVALIDA
+
+└ N09 · Nombre repetido → 409
+  POST http://localhost:4000/api/sedes [409 Conflict, 475B, 7ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 409
+  √  tipo = CONFLICTO
+  √  un 409 no trae errores[]
+
+└ N10 · Id que no es número → 400
+  GET http://localhost:4000/api/sedes/abc [400 Bad Request, 520B, 4ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  errores[] señala: id
+
+└ N11 · Sede inexistente → 404
+  GET http://localhost:4000/api/sedes/999999 [404 Not Found, 467B, 6ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 404
+  √  tipo = NO_ENCONTRADO
+
+└ N12 · Actualizar sin campos → 400
+  PUT http://localhost:4000/api/sedes/1 [400 Bad Request, 477B, 4ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  tipo = SOLICITUD_INVALIDA
+
+└ N13 · Cierre anterior a la apertura guardada → 400
+  PUT http://localhost:4000/api/sedes/1 [400 Bad Request, 552B, 4ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  errores[] señala: hora_apertura
+
+└ N14 · Dar de baja una sede inexistente → 404
+  DELETE http://localhost:4000/api/sedes/999999 [404 Not Found, 470B, 7ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 404
+  √  tipo = NO_ENCONTRADO
+
+□ 03 · Servicios · flujo completo (positivos)
+└ P09 · Listar servicios → 200
+  GET http://localhost:4000/api/servicios [200 OK, 1.17kB, 7ms]
+  √  Responde en menos de 1000 ms
+  √  Estado 200
+  √  el precio llega como número
+
+└ P10 · Filtrar por categoría → 200
+  GET http://localhost:4000/api/servicios?categoria=frenos [200 OK, 490B, 6ms]
+  √  Responde en menos de 1000 ms
+  √  Estado 200
+  √  solo servicios de frenos
+
+└ P11 · Crear servicio → 201
+  POST http://localhost:4000/api/servicios [201 Created, 493B, 15ms]
+  √  Responde en menos de 1000 ms
+  √  Estado 201
+  √  guarda el id para las siguientes peticiones
+  √  precio guardado: 89.9
+
+└ P12 · Consultar el servicio creado → 200
+  GET http://localhost:4000/api/servicios/6 [200 OK, 488B, 6ms]
+  √  Responde en menos de 1000 ms
+  √  Estado 200
+  √  es el servicio creado
+
+└ P13 · Actualizar solo el precio → 200
+  PUT http://localhost:4000/api/servicios/6 [200 OK, 488B, 20ms]
+  √  Responde en menos de 1000 ms
+  √  Estado 200
+  √  cambió el precio
+  √  conservó la duración
+
+└ P14 · Dar de baja el servicio → 204
+  DELETE http://localhost:4000/api/servicios/6 [204 No Content, 224B, 13ms]
+  √  Responde en menos de 1000 ms
+  √  Estado 204
+
+└ P15 · El servicio dado de baja ya no existe → 404
+  GET http://localhost:4000/api/servicios/6 [404 Not Found, 464B, 7ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 404
+  √  tipo = NO_ENCONTRADO
+
+□ 04 · Servicios · validaciones y errores (negativos y límites)
+└ N15 · Body vacío → 400 con los 4 obligatorios
+  POST http://localhost:4000/api/servicios [400 Bad Request, 701B, 4ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  tipo = VALIDACION
+  √  errores[] señala: nombre, categoria, precio, duracion_min
+
+└ N16 · Precio 0 (límite inferior) → 400
+  POST http://localhost:4000/api/servicios [400 Bad Request, 540B, 4ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  errores[] señala: precio
+
+└ N17 · Precio 1 000 000 (sobre el máximo) → 400
+  POST http://localhost:4000/api/servicios [400 Bad Request, 540B, 7ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  errores[] señala: precio
+
+└ N18 · Precio con 3 decimales → 400
+  POST http://localhost:4000/api/servicios [400 Bad Request, 545B, 4ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  errores[] señala: precio
+
+└ N19 · Duración 14 min (bajo el mínimo) → 400
+  POST http://localhost:4000/api/servicios [400 Bad Request, 549B, 6ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  errores[] señala: duracion_min
+
+└ N20 · Duración 481 min (sobre el máximo) → 400
+  POST http://localhost:4000/api/servicios [400 Bad Request, 549B, 6ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  errores[] señala: duracion_min
+
+└ N21 · Categoría fuera de la lista → 400
+  POST http://localhost:4000/api/servicios [400 Bad Request, 603B, 6ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  errores[] señala: categoria
+
+└ N22 · Varios campos mal → 400 con todos
+  POST http://localhost:4000/api/servicios [400 Bad Request, 772B, 4ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  errores[] señala: categoria, precio, duracion_min
+
+└ N23 · Nombre repetido → 409
+  POST http://localhost:4000/api/servicios [409 Conflict, 489B, 7ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 409
+  √  tipo = CONFLICTO
+
+└ N24 · Filtro con categoría inexistente → 400
+  GET http://localhost:4000/api/servicios?categoria=lavado [400 Bad Request, 559B, 3ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 400
+  √  tipo = SOLICITUD_INVALIDA
+
+└ N25 · Servicio inexistente → 404
+  GET http://localhost:4000/api/servicios/999999 [404 Not Found, 474B, 6ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 404
+  √  tipo = NO_ENCONTRADO
+
+└ N26 · Ruta que no existe → 404
+  GET http://localhost:4000/api/sucursales [404 Not Found, 472B, 2ms]
+  √  Contrato de error
+  √  El error no filtra datos internos
+  √  Responde en menos de 1000 ms
+  √  Estado 404
+  √  tipo = NO_ENCONTRADO
+
+┌─────────────────────────┬─────────────────┬─────────────────┐
+│                         │        executed │          failed │
+├─────────────────────────┼─────────────────┼─────────────────┤
+│              iterations │               1 │               0 │
+├─────────────────────────┼─────────────────┼─────────────────┤
+│                requests │              47 │               0 │
+├─────────────────────────┼─────────────────┼─────────────────┤
+│            test-scripts │              94 │               0 │
+├─────────────────────────┼─────────────────┼─────────────────┤
+│      prerequest-scripts │               2 │               0 │
+├─────────────────────────┼─────────────────┼─────────────────┤
+│              assertions │             218 │               0 │
+├─────────────────────────┴─────────────────┴─────────────────┤
+│ total run duration: 5s                                      │
+├─────────────────────────────────────────────────────────────┤
+│ total data received: 10.95kB (approx)                       │
+├─────────────────────────────────────────────────────────────┤
+│ average response time: 8ms [min: 2ms, max: 43ms, s.d.: 7ms] │
+└─────────────────────────────────────────────────────────────┘

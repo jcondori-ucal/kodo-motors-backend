@@ -1,0 +1,92 @@
+$ npm run test:suite
+
+===============================================================
+🧪 INICIANDO SUITE DE PRUEBAS DE CALIDAD (QA) - KODO MOTORS
+===============================================================
+
+🔍 1. Verificación de Código Fuente (Auditoría Anti-Hard Delete)...
+✅ PASS [CP-01] Ausencia total de sentencias SQL "DELETE FROM" en src/
+
+🔒 2. Auditoría de Seguridad de Credenciales...
+✅ PASS [CP-02] db.js no define usuario ni contraseña por defecto
+✅ PASS [CP-03] docker-compose.yml no trae credenciales por defecto (${VAR:-valor})
+✅ PASS [CP-04] .env.example solo describe las contraseñas, no las incluye
+
+📦 3. Reglas de Negocio de Repuestos (Borrado lógico)...
+✅ PASS [CP-05] Bloquear baja de repuesto si aún cuenta con stock > 0
+✅ PASS [CP-06] Borrado lógico de repuesto con stock 0
+✅ PASS [CP-07] Código de repuesto que pertenece a uno dado de baja → 409
+
+📋 4. Reglas de Negocio de Encuestas (Orden Entregada)...
+✅ PASS [CP-08] Rechazar encuesta para orden en estado "en_proceso"
+✅ PASS [CP-09] Rechazar encuesta para orden en estado "listo"
+✅ PASS [CP-10] Rechazar encuesta para orden inexistente (404)
+✅ PASS [CP-11] Aceptar encuesta cuando la orden está en estado "entregado"
+✅ PASS [CP-12] Rechazar una segunda encuesta para la misma orden (409)
+
+🗑️ 5. Borrado lógico en los seis recursos...
+✅ PASS [CP-13] Borrado lógico de encuesta (remove() en lugar de DELETE físico)
+✅ PASS [CP-14] Dar de baja una sede que no existe o ya está de baja → 404
+✅ PASS [CP-15] Dar de baja un servicio que no existe o ya está de baja → 404
+✅ PASS [CP-16] Dar de baja un vehículo del catálogo que no existe o ya está de baja → 404
+✅ PASS [CP-17] Dar de baja una reserva que no existe o ya está de baja → 404
+✅ PASS [CP-18] Dar de baja un repuesto que no existe o ya está de baja → 404
+✅ PASS [CP-19] Dar de baja una encuesta que no existe o ya está de baja → 404
+✅ PASS [CP-20] Nombre de sede que pertenece a una sede dada de baja → 409
+
+🧾 6. Validaciones de los modelos...
+✅ PASS [CP-21] Sedes: activa no se acepta en el body
+✅ PASS [CP-22] Servicios: activo no se acepta en el body
+✅ PASS [CP-23] Sedes: datos incompletos devuelven la lista de errores
+✅ PASS [CP-24] Catálogo: activo no se acepta en el body
+✅ PASS [CP-25] Reservas: campos obligatorios y activo rechazado
+✅ PASS [CP-26] Repuestos y encuestas: activo rechazado en la actualización
+
+🧩 7. Contrato común (validarId y manejarErrores)...
+✅ PASS [CP-27] validarId: "abc" → 400; "7" → continúa
+✅ PASS [CP-28] manejarErrores: HttpError → { mensaje, errores }
+✅ PASS [CP-29] manejarErrores: ER_DUP_ENTRY de MySQL → 409
+✅ PASS [CP-30] manejarErrores: error inesperado → 500 sin detalles internos
+
+🛡️ 8. Validadores de sedes, servicios y reservas...
+✅ PASS [CP-31] Sedes: acepta datos reales y rechaza HTML, arreglos y formatos inválidos
+✅ PASS [CP-32] Sedes: PUT parcial, espacios normalizados y activa rechazada
+✅ PASS [CP-33] Servicios: valida texto, categoría, precio con 2 decimales y duración
+✅ PASS [CP-34] Reservas: rechaza fecha imposible, hora fuera de intervalo, ids no enteros y estado inicial
+✅ PASS [CP-35] Reservas: PUT parcial acepta observacion null y rechaza un estado inexistente
+✅ PASS [CP-36] Reservas: filtros inválidos o repetidos se rechazan
+
+📅 9. Reglas de negocio de reservas y bajas con citas pendientes...
+✅ PASS [CP-37] Cita en el pasado → 400
+✅ PASS [CP-38] Cita a más de 30 días → 400
+✅ PASS [CP-39] Cita en domingo en sede que no atiende → 400
+✅ PASS [CP-40] Cita antes de la apertura → 400
+✅ PASS [CP-41] Servicio que termina después del cierre → 400
+✅ PASS [CP-42] Servicio que termina justo al cierre se acepta
+✅ PASS [CP-43] Reservas: un campo desconocido se rechaza
+✅ PASS [CP-44] Mismo vehículo en la misma fecha y hora → 409
+✅ PASS [CP-45] Una reserva pendiente no pasa directo a atendida → 409
+✅ PASS [CP-46] Una reserva cancelada ya no se puede editar → 409
+✅ PASS [CP-47] Una cita pasada confirmada se puede marcar como atendida
+✅ PASS [CP-48] Dar de baja una sede con citas pendientes → 409
+✅ PASS [CP-49] Dar de baja un servicio con citas pendientes → 409
+
+🛡️ 10. Capa de Manejo de Errores - Semana 10 (Sedes, Servicios y Reservas)...
+✅ PASS [CP-50] Sedes: buscar inexistente lanza NotFoundError (404, NO_ENCONTRADO)
+✅ PASS [CP-51] Sedes: conflicto por nombre duplicado lanza ConflictError (409, CONFLICTO)
+✅ PASS [CP-52] Sedes: actualizar sin campos lanza BadRequestError (400, SOLICITUD_INVALIDA)
+✅ PASS [CP-53] Servicios: buscar inexistente lanza NotFoundError (404, NO_ENCONTRADO)
+✅ PASS [CP-54] Servicios: conflicto por nombre repetido lanza ConflictError (409, CONFLICTO)
+✅ PASS [CP-55] Servicios: datos inválidos lanzan ValidationError (400, VALIDACION) con lista de errores
+✅ PASS [CP-56] Reservas: buscar inexistente lanza NotFoundError (404, NO_ENCONTRADO)
+✅ PASS [CP-57] Reservas: choque de horario en misma sede, fecha y hora lanza ConflictError (409, CONFLICTO)
+✅ PASS [CP-58] Reservas: body vacío lanza ValidationError (400, VALIDACION) con lista de errores
+✅ PASS [CP-59] Trazabilidad: asigna req.idTraza (8 caracteres) y cabecera X-Request-Id
+✅ PASS [CP-60] Contrato de error: respuesta estándar con { estado, tipo, mensaje, idTraza, ruta }
+✅ PASS [CP-61] Autenticación y Autorización (401 y 403): UnauthorizedError y ForbiddenError
+
+===============================================================
+📊 RESUMEN: 61 Aprobadas, 0 Fallidas de un total de 61 pruebas.
+🎉 ¡TODAS LAS PRUEBAS PASARON EXITOSAMENTE!
+===============================================================
+

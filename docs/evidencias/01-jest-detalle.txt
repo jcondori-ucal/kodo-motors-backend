@@ -1,0 +1,417 @@
+$ npx jest --runInBand --json   (detalle prueba por prueba, armado desde el reporte JSON de Jest)
+
+PASS tests/integracion/flujo.api.test.js  (3 pruebas)
+    ✓ ciclo de vida de una sede: se abre, cambia de horario y se da de baja
+    ✓ ciclo de vida de un servicio: se publica, sube de precio y se retira
+    ✓ operación de negocio: un servicio con citas pendientes no se retira hasta que se atienden
+
+PASS tests/integracion/sedes.api.test.js  (42 pruebas)
+  GET /api/sedes
+    ✓ 200 · lista las 3 sedes activas del seed
+    ✓ 200 · filtra por distrito
+    ✓ 200 · un distrito sin sedes devuelve una lista vacía, no un error
+    ✓ 400 · filtro distrito vacío
+  GET /api/sedes/:id
+    ✓ 200 · devuelve la sede
+    ✓ 404 · la sede no existe
+    ✓ 400 · id inválido (letras) se rechaza ANTES de consultar la base
+    ✓ 400 · id inválido (cero) se rechaza ANTES de consultar la base
+    ✓ 400 · id inválido (negativo) se rechaza ANTES de consultar la base
+    ✓ 400 · id inválido (decimal) se rechaza ANTES de consultar la base
+  POST /api/sedes
+    ✓ 201 · crea la sede y la devuelve con id, horas completas y activa
+    ✓ 201 · guarda el nombre saneado (sin espacios de más)
+    ✓ 400 · body vacío: un error por cada campo obligatorio y no guarda nada
+    ✓ 400 · teléfono de 8 dígitos
+    ✓ 400 · teléfono de 10 dígitos
+    ✓ 400 · hora sin formato HH:MM
+    ✓ 400 · nombre de 2 caracteres
+    ✓ 400 · nombre con HTML
+    ✓ 400 · atiende_domingo como texto
+    ✓ 400 · id enviado por el cliente
+    ✓ 400 · activa enviada por el cliente
+    ✓ 400 · campo que no existe
+    ✓ 400 · regla de negocio: apertura igual al cierre
+    ✓ 400 · regla de negocio: apertura después del cierre
+    ✓ 201 · límite válido: la sede abre un minuto antes de cerrar
+    ✓ 409 · nombre de una sede que ya existe
+    ✓ 409 · nombre de una sede dada de baja: el mensaje lo aclara
+    ✓ 400 · JSON mal formado
+    ✓ 413 · cuerpo de más de 10 KB
+  PUT /api/sedes/:id
+    ✓ 200 · actualiza solo el campo enviado y conserva los demás
+    ✓ 200 · se puede reenviar su propio nombre sin que cuente como duplicado
+    ✓ 400 · un cierre anterior a la apertura que ya estaba guardada
+    ✓ 400 · body vacío
+    ✓ 400 · no se puede reactivar una sede con activa: true
+    ✓ 404 · la sede no existe
+    ✓ 409 · renombrarla con el nombre de otra sede
+  DELETE /api/sedes/:id (borrado lógico)
+    ✓ 204 · da de baja la sede: deja de listarse y responde 404 al consultarla
+    ✓ la fila no se borra: aparece con incluir_inactivos=true y activa en false
+    ✓ 404 · darla de baja dos veces
+    ✓ 409 · regla de negocio: no se da de baja una sede con citas pendientes
+  errores inesperados en /api/sedes
+    ✓ 500 · un fallo interno responde genérico y no filtra el detalle
+    ✓ 503 · con MySQL apagado no se filtra ECONNREFUSED ni el puerto
+
+PASS tests/integracion/seguridad.api.test.js  (55 pruebas)
+  401 · sin credencial no se entra a ninguna ruta
+    ✓ get /api/sedes sin x-api-key
+    ✓ get /api/sedes/1 sin x-api-key
+    ✓ get /api/servicios sin x-api-key
+    ✓ get /api/servicios/1 sin x-api-key
+    ✓ post /api/sedes sin x-api-key
+    ✓ put /api/sedes/1 sin x-api-key
+    ✓ delete /api/sedes/3 sin x-api-key
+    ✓ post /api/servicios sin x-api-key
+    ✓ put /api/servicios/1 sin x-api-key
+    ✓ delete /api/servicios/5 sin x-api-key
+    ✓ get /api/sedes con una llave equivocada
+    ✓ get /api/sedes/1 con una llave equivocada
+    ✓ get /api/servicios con una llave equivocada
+    ✓ get /api/servicios/1 con una llave equivocada
+    ✓ post /api/sedes con una llave equivocada
+    ✓ put /api/sedes/1 con una llave equivocada
+    ✓ delete /api/sedes/3 con una llave equivocada
+    ✓ post /api/servicios con una llave equivocada
+    ✓ put /api/servicios/1 con una llave equivocada
+    ✓ delete /api/servicios/5 con una llave equivocada
+    ✓ la llave que antes estaba escrita en el código ya no abre la API
+    ✓ la respuesta 401 no revela la llave real ni datos del recurso
+  403 · la escritura exige el rol admin
+    ✓ post /api/sedes con rol recepcion
+    ✓ put /api/sedes/1 con rol recepcion
+    ✓ delete /api/sedes/3 con rol recepcion
+    ✓ post /api/servicios con rol recepcion
+    ✓ put /api/servicios/1 con rol recepcion
+    ✓ delete /api/servicios/5 con rol recepcion
+    ✓ post /api/sedes con llave válida pero sin rol
+    ✓ put /api/sedes/1 con llave válida pero sin rol
+    ✓ delete /api/sedes/3 con llave válida pero sin rol
+    ✓ post /api/servicios con llave válida pero sin rol
+    ✓ put /api/servicios/1 con llave válida pero sin rol
+    ✓ delete /api/servicios/5 con llave válida pero sin rol
+    ✓ un intento rechazado no modifica nada
+  200 · con la credencial correcta
+    ✓ get /api/sedes: para leer basta la llave, sin rol
+    ✓ get /api/sedes/1: para leer basta la llave, sin rol
+    ✓ get /api/servicios: para leer basta la llave, sin rol
+    ✓ get /api/servicios/1: para leer basta la llave, sin rol
+    ✓ get /api/sedes: el rol recepcion también puede leer
+    ✓ get /api/sedes/1: el rol recepcion también puede leer
+    ✓ get /api/servicios: el rol recepcion también puede leer
+    ✓ get /api/servicios/1: el rol recepcion también puede leer
+    ✓ post /api/sedes: el rol admin puede escribir
+    ✓ put /api/sedes/1: el rol admin puede escribir
+    ✓ delete /api/sedes/3: el rol admin puede escribir
+    ✓ post /api/servicios: el rol admin puede escribir
+    ✓ put /api/servicios/1: el rol admin puede escribir
+    ✓ delete /api/servicios/5: el rol admin puede escribir
+  orden de las comprobaciones: 401 → 403 → 400 → 404
+    ✓ sin credencial y con datos inválidos responde 401, no 400
+    ✓ sin credencial, un id inexistente responde 401: no revela si el recurso existe
+    ✓ sin el rol y con datos inválidos responde 403, no 400
+    ✓ sin el rol, un id inexistente responde 403, no 404
+  rutas que no existen
+    ✓ 404 · ruta desconocida, con el mismo contrato de error
+    ✓ 404 · método no implementado en un recurso (PATCH)
+
+PASS tests/integracion/servicios.api.test.js  (39 pruebas)
+  GET /api/servicios
+    ✓ 200 · lista los 5 servicios activos del seed
+    ✓ 200 · filtra por categoría
+    ✓ 400 · filtro por una categoría que no existe
+  GET /api/servicios/:id
+    ✓ 200 · devuelve el servicio con el precio como número
+    ✓ 404 · el servicio no existe
+    ✓ 400 · id que no es un entero positivo
+  POST /api/servicios
+    ✓ 201 · crea el servicio y lo devuelve con id y activo
+    ✓ 201 · sin descripción: se guarda como null
+    ✓ 400 · body vacío: un error por cada campo obligatorio y no guarda nada
+    ✓ límite · precio 0 → NaN
+    ✓ límite · precio 0.01 (mínimo) → NaN
+    ✓ límite · precio 999999.99 (máximo) → NaN
+    ✓ límite · precio 1000000 → NaN
+    ✓ límite · duración 14 min → NaN
+    ✓ límite · duración 15 min (mínimo) → NaN
+    ✓ límite · duración 480 min (máximo) → NaN
+    ✓ límite · duración 481 min → NaN
+    ✓ 400 · precio negativo
+    ✓ 400 · precio con 3 decimales
+    ✓ 400 · precio como texto libre
+    ✓ 400 · duración con decimales
+    ✓ 400 · categoría fuera de la lista
+    ✓ 400 · nombre de 2 caracteres
+    ✓ 400 · descripción con HTML
+    ✓ 400 · descripción de 256 caracteres
+    ✓ 400 · activo enviado por el cliente
+    ✓ 400 · campo que no existe
+    ✓ 400 · varios campos mal: informa todos a la vez
+    ✓ 409 · nombre de un servicio que ya existe
+  PUT /api/servicios/:id
+    ✓ 200 · cambia solo el precio y conserva los demás campos
+    ✓ 200 · descripción null borra la descripción
+    ✓ 400 · precio inválido: el servicio queda como estaba
+    ✓ 400 · body vacío
+    ✓ 404 · el servicio no existe
+    ✓ 409 · renombrarlo con el nombre de otro servicio
+  DELETE /api/servicios/:id (borrado lógico)
+    ✓ 204 · da de baja el servicio: deja de listarse y responde 404 al consultarlo
+    ✓ la fila no se borra: aparece con incluir_inactivos=true y activo en false
+    ✓ 404 · darlo de baja dos veces
+    ✓ 409 · regla de negocio: no se da de baja un servicio con citas pendientes
+
+PASS tests/unit/auth.test.js  (13 pruebas)
+  autenticar · cabecera x-api-key
+    ✓ llave correcta: continúa sin error
+    ✓ sin cabecera → 401 NO_AUTENTICADO
+    ✓ cabecera vacía → 401 NO_AUTENTICADO
+    ✓ llave equivocada → 401 NO_AUTENTICADO
+    ✓ llave casi igual (un carácter menos) → 401 NO_AUTENTICADO
+    ✓ llave correcta con mayúsculas cambiadas → 401 NO_AUTENTICADO
+    ✓ el mensaje de error nunca contiene la llave real
+    ✓ si el servidor no tiene API_KEY configurada, nadie entra (ni con la llave antigua del código)
+  autorizar · cabecera x-rol
+    ✓ el rol permitido continúa
+    ✓ otro rol → 403 SIN_PERMISO
+    ✓ sin rol → 403 SIN_PERMISO
+    ✓ rol con mayúsculas → 403 SIN_PERMISO
+    ✓ acepta cualquiera de varios roles y los nombra en el mensaje
+
+PASS tests/unit/errores-handler.test.js  (17 pruebas)
+  manejarErrores · errores esperados (4xx)
+    ✓ NotFoundError responde 404 con el contrato completo
+    ✓ ValidationError responde 400 e incluye errores[] por campo
+    ✓ un 409 no lleva errores[]: no es un problema de campos
+  manejarErrores · traduce errores de librerías
+    ✓ JSON roto → NaN 400
+    ✓ cuerpo de más de 10 KB → NaN 413
+    ✓ nombre duplicado en MySQL → NaN 409
+    ✓ llave foránea inexistente → NaN 400
+    ✓ MySQL apagado → NaN 503
+  manejarErrores · errores inesperados (500) no filtran datos internos
+    ✓ responde un mensaje genérico y oculta err.message
+    ✓ el detalle sí queda en el log del servidor, con el idTraza para ubicarlo
+    ✓ con MySQL caído, el cliente no ve ECONNREFUSED ni el puerto
+  rutaNoEncontrada
+    ✓ delega un NotFoundError que nombra el método y la ruta
+  soloCamposPermitidos
+    ✓ si todos los campos son conocidos, continúa
+    ✓ un campo desconocido → ValidationError con un error por campo
+    ✓ si el cuerpo es un arreglo → BadRequestError
+    ✓ si el cuerpo es sin cuerpo → BadRequestError
+    ✓ si el cuerpo es un texto → BadRequestError
+
+PASS tests/unit/sede.model.test.js  (24 pruebas)
+  validarSede · la apertura debe ser ANTES del cierre
+    ✓ horario normal (08:00 a 18:00)
+    ✓ un minuto de atención (17:59 a 18:00)
+    ✓ apertura igual al cierre (18:00 a 18:00)
+    ✓ apertura un minuto después del cierre (18:01 a 18:00)
+    ✓ horario al revés (18:00 a 08:00)
+    ✓ compara bien una hora guardada (HH:MM:SS) contra una nueva (HH:MM)
+  validarSede · datos que devuelve para guardar
+    ✓ completa los segundos de las horas
+    ✓ si no llega atiende_domingo, la sede no atiende domingos
+    ✓ atiende_domingo true se guarda como 1
+    ✓ quita los espacios de los extremos
+  validarSede · errores
+    ✓ lanza ValidationError (400) con un error por cada campo que falta
+    ✓ cada error tiene la forma { campo, mensaje }
+    ✓ teléfono 8 dígitos → rechazado
+    ✓ teléfono 10 dígitos → rechazado
+    ✓ teléfono con letras → rechazado
+    ✓ teléfono número en vez de texto (perdería el 0 inicial) → rechazado
+  revisarCampos · la bandera de baja no se edita
+    ✓ activa en el body → ValidationError
+    ✓ los campos de una sede pasan sin error
+  validarFiltros del listado
+    ✓ sin filtros devuelve un objeto vacío (solo sedes activas)
+    ✓ distrito se recorta
+    ✓ distrito vacío → BadRequestError
+    ✓ incluir_inactivos=true
+    ✓ incluir_inactivos=false
+    ✓ incluir_inactivos=1
+
+PASS tests/unit/sedes.service.test.js  (17 pruebas)
+  buscarSedePorId
+    ✓ devuelve la sede cuando existe
+    ✓ sede inexistente o dada de baja → NotFoundError
+  crearSede
+    ✓ guarda los datos ya limpios y devuelve la sede creada
+    ✓ nombre repetido → ConflictError y NO guarda
+    ✓ nombre de una sede dada de baja → ConflictError que lo aclara
+    ✓ datos inválidos → ValidationError antes de consultar la base
+  actualizarSede
+    ✓ combina el cambio con los datos guardados
+    ✓ un cierre anterior a la apertura YA GUARDADA → ValidationError y NO actualiza
+    ✓ renombrarla como otra sede → ConflictError y NO actualiza
+    ✓ sin campos → BadRequestError
+    ✓ sede inexistente → NotFoundError
+  eliminarSede (borrado lógico)
+    ✓ sin citas pendientes: da de baja
+    ✓ con citas pendientes → ConflictError y NO da de baja
+    ✓ sede inexistente o ya dada de baja → NotFoundError
+    ✓ cuenta las citas desde HOY (reloj congelado en 2026-11-20)
+  listarSedes
+    ✓ pasa al repositorio los filtros ya validados
+    ✓ un filtro inválido → BadRequestError y no consulta
+
+PASS tests/unit/sedes.validators.test.js  (34 pruebas)
+  reglasSede en POST (todos los campos obligatorios)
+    ✓ una sede completa no tiene errores
+    ✓ un body vacío marca los seis campos obligatorios
+    ✓ atiende_domingo es opcional
+  teléfono: clases de equivalencia
+    ✓ fijo de Lima (01 + 7 dígitos) → 014445566
+    ✓ celular (9 + 8 dígitos) → 987654321
+    ✓ muy corto (8 dígitos) → 98765432
+    ✓ muy largo (10 dígitos) → 9876543210
+    ✓ no empieza en 0 ni en 9 → 812345678
+    ✓ contiene letras → 98765432a
+    ✓ número en vez de texto → 987654321
+  horas: formato HH:MM de 24 horas
+    ✓ primera hora del día (00:00)
+    ✓ último minuto del día (23:59)
+    ✓ hora 24 no existe (24:00)
+    ✓ minuto 60 no existe (08:60)
+    ✓ sin cero a la izquierda (8:00)
+    ✓ con segundos (08:00:00)
+    ✓ texto libre (ocho)
+  nombre: longitud de 3 a 80 y caracteres permitidos
+    ✓ 2 caracteres
+    ✓ 3 caracteres (mínimo)
+    ✓ 80 caracteres (máximo)
+    ✓ 81 caracteres
+    ✓ solo espacios
+    ✓ etiqueta HTML
+    ✓ arreglo en vez de texto
+    ✓ sanea el texto: quita extremos y une espacios repetidos
+  otros campos
+    ✓ distrito no admite números
+    ✓ dirección de 4 caracteres es muy corta
+    ✓ atiende_domingo como texto "true" se rechaza: debe ser booleano
+    ✓ atiende_domingo como número 1 se rechaza: debe ser booleano
+    ✓ atiende_domingo como texto libre se rechaza: debe ser booleano
+    ✓ id y activa no se pueden enviar, con un mensaje que explica por qué
+  reglasSede(true) en PUT (actualización parcial)
+    ✓ un solo campo válido no exige los demás
+    ✓ el campo enviado se valida igual que en POST
+    ✓ tampoco en PUT se acepta activa
+
+PASS tests/unit/servicio.model.test.js  (31 pruebas)
+  validarServicio · límites del precio (mayor a 0 y hasta 999 999.99)
+    ✓ negativo (-1)
+    ✓ cero (0)
+    ✓ un céntimo (mínimo válido) (0.01)
+    ✓ precio normal (180)
+    ✓ máximo que cabe en DECIMAL(8,2) (999999.99)
+    ✓ un céntimo sobre el máximo (1000000)
+    ✓ texto que no es número (gratis)
+    ✓ sin precio (undefined)
+    ✓ redondea a 2 decimales antes de guardar
+    ✓ acepta el precio como texto numérico y lo devuelve como número
+  validarServicio · duración en minutos enteros
+    ✓ cero (0)
+    ✓ negativa (-30)
+    ✓ con decimales (45.5)
+    ✓ un minuto (1)
+    ✓ una hora (60)
+  validarServicio · categoría y descripción
+    ✓ categoría mantenimiento es válida
+    ✓ categoría diagnostico es válida
+    ✓ categoría frenos es válida
+    ✓ categoría neumaticos es válida
+    ✓ categoría electrico es válida
+    ✓ categoría planchado_pintura es válida
+    ✓ una categoría fuera de la lista se rechaza
+    ✓ descripción no enviada se guarda como null
+    ✓ descripción null se guarda como null
+    ✓ descripción texto vacío se guarda como null
+    ✓ descripción de 256 caracteres se rechaza; de 255 se acepta
+  validarServicio · errores
+    ✓ lanza ValidationError (400) con todos los campos que fallan, no solo el primero
+    ✓ cada error tiene la forma { campo, mensaje }
+  revisarCampos y validarFiltros
+    ✓ activo en el body → ValidationError (la baja solo se hace con DELETE)
+    ✓ filtro por una categoría válida
+    ✓ filtro por una categoría que no existe → BadRequestError
+
+PASS tests/unit/servicios.service.test.js  (16 pruebas)
+  buscarServicioPorId
+    ✓ devuelve el servicio cuando existe
+    ✓ servicio inexistente o dado de baja → NotFoundError
+  crearServicio
+    ✓ guarda el precio redondeado y la descripción ausente como null
+    ✓ nombre repetido → ConflictError y NO guarda
+    ✓ nombre de un servicio dado de baja → ConflictError que lo aclara
+    ✓ precio 0 → ValidationError antes de consultar la base
+  actualizarServicio
+    ✓ cambia solo el precio y conserva lo demás
+    ✓ renombrarlo como otro servicio → ConflictError y NO actualiza
+    ✓ sin campos → BadRequestError
+    ✓ servicio inexistente → NotFoundError
+  eliminarServicio (borrado lógico)
+    ✓ sin citas pendientes: da de baja
+    ✓ con citas pendientes → ConflictError y NO da de baja
+    ✓ servicio inexistente o ya dado de baja → NotFoundError
+    ✓ cuenta las citas desde HOY (reloj congelado en 2026-12-31)
+  listarServicios
+    ✓ filtra por una categoría válida
+    ✓ categoría inexistente → BadRequestError y no consulta
+
+PASS tests/unit/servicios.validators.test.js  (42 pruebas)
+  reglasServicio en POST
+    ✓ un servicio completo no tiene errores
+    ✓ un body vacío marca los cuatro campos obligatorios (descripción es opcional)
+  duración: de 15 a 480 minutos (una jornada de taller)
+    ✓ un minuto antes del mínimo (14)
+    ✓ mínimo (15)
+    ✓ máximo (480)
+    ✓ un minuto sobre el máximo (481)
+    ✓ con decimales (45.5)
+    ✓ booleano (true)
+    ✓ texto numérico (60)
+    ✓ convierte el texto numérico a entero
+  precio: mayor a 0, hasta 999 999.99 y con máximo 2 decimales
+    ✓ cero (0)
+    ✓ negativo (-50)
+    ✓ un céntimo (mínimo) (0.01)
+    ✓ máximo (999999.99)
+    ✓ sobre el máximo (1000000)
+    ✓ tres decimales (10.999)
+    ✓ booleano (true)
+    ✓ texto que no es número (gratis)
+    ✓ convierte el texto numérico a número
+  categoría: lista cerrada
+    ✓ mantenimiento es válida
+    ✓ diagnostico es válida
+    ✓ frenos es válida
+    ✓ neumaticos es válida
+    ✓ electrico es válida
+    ✓ planchado_pintura es válida
+    ✓ categoría fuera de la lista se rechaza
+    ✓ categoría con mayúscula se rechaza
+    ✓ categoría número se rechaza
+    ✓ el mensaje enumera las categorías permitidas
+  descripción: texto libre opcional de hasta 255 caracteres
+    ✓ 255 caracteres
+    ✓ 256 caracteres
+    ✓ null
+    ✓ etiqueta HTML
+    ✓ número
+    ✓ una descripción vacía se convierte en null
+  nombre y campos prohibidos
+    ✓ nombre de 2 caracteres
+    ✓ nombre de 3 caracteres
+    ✓ nombre de 100 caracteres
+    ✓ nombre de 101 caracteres
+    ✓ id y activo no se pueden enviar
+  reglasServicio(true) en PUT (actualización parcial)
+    ✓ solo el precio: no exige los demás campos
+    ✓ el precio enviado respeta el mismo rango que en POST
+
+Test Suites: 12 passed, 0 failed, 12 total
+Tests:       333 passed, 0 failed, 333 total

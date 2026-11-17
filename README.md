@@ -18,6 +18,7 @@ Evidencia Evaluativa 2): sedes, servicios, catálogo de vehículos, reservas, re
 8. [Endpoints principales](#8-endpoints-principales)
 9. [Base de datos](#9-base-de-datos)
 10. [Observaciones y problemas resueltos durante la integración](#10-observaciones-y-problemas-resueltos-durante-la-integración)
+11. [EE3 · Sedes y Servicios: seguridad, pruebas y documentación](#11-ee3--sedes-y-servicios-seguridad-pruebas-y-documentación)
 
 ---
 
@@ -107,10 +108,12 @@ kodo-motor-backend/
 │   ├── services/
 │   ├── repositories/
 │   ├── models/
-│   ├── middlewares/           # validarId, manejarErrores
+│   ├── middlewares/           # auth, trazabilidad, validarId, manejarErrores
 │   ├── validators/            # reglas de express-validator por recurso
 │   └── utils/                 # HttpError, validaciones
-├── test-suite.js              # npm test
+├── tests/                     # Jest: unit/, integracion/ y helpers/  (npm test)
+├── docs/                      # documentación técnica, informe de pruebas y evidencias
+├── test-suite.js              # npm run test:suite
 ├── docker-compose.yml         # MySQL 8.4 y Adminer
 └── .env.example               # qué variables hay que definir (sin credenciales)
 ```
@@ -126,6 +129,9 @@ kodo-motor-backend/
 | cors | 2.8 | Permite que un frontend en otra dirección consuma la API |
 | MySQL | 8.4 | Base de datos relacional, en un contenedor Docker |
 | Docker Compose | — | Levanta MySQL y Adminer |
+| express-validator | 7.3 | Reglas de validación y saneamiento por ruta |
+| Jest | 30 | Pruebas unitarias y de integración |
+| Supertest | 7 | Peticiones HTTP a la app sin levantar el servidor |
 | nodemon | 3.1 | Reinicia la API al guardar cambios |
 | Postman | — | Pruebas de los endpoints |
 
@@ -148,6 +154,9 @@ cp .env.example .env
 
 En Windows (cmd): `copy .env.example .env`.
 
+El `.env` incluye **`API_KEY`**: la llave que los clientes envían en la cabecera `x-api-key`.
+Cada integrante inventa la suya; sin ella la API no arranca.
+
 ## 7. Ejecución
 
 ```bash
@@ -168,7 +177,11 @@ Comprobación rápida: `GET http://localhost:4000/api/salud`.
 |---|---|
 | `npm run dev` | API con reinicio automático |
 | `npm start` | API sin nodemon |
-| `npm test` | 61 pruebas automáticas, sin necesidad de base de datos |
+| `npm test` | 333 pruebas de Jest (unitarias e integración), sin necesidad de base de datos |
+| `npm run test:unit` / `test:integracion` | Solo un nivel de pruebas |
+| `npm run cobertura` | Jest con reporte de cobertura |
+| `npm run test:suite` | Suite anterior del proyecto: 61 casos (`test-suite.js`) |
+| `npm run test:todo` | Suite anterior + Jest |
 | `npm run bd:levantar` / `bd:detener` | Levanta o detiene MySQL |
 | `npm run bd:reiniciar` | Borra la base y la vuelve a crear desde `database/` |
 
@@ -194,6 +207,10 @@ Base: `http://localhost:4000/api`. Todos los recursos siguen el mismo contrato.
 | Encuestas | `/api/encuestas` | `puntuacion`, `recomendaria` |
 | Vehículos (solo lectura) | `GET /api/vehiculos` | — para saber qué `vehiculo_id` usar en una reserva |
 | Salud | `GET /api/salud` | — estado de la API y de la base |
+
+**Sedes y servicios exigen credencial.** Todas sus rutas piden la cabecera `x-api-key` (401 si falta
+o no coincide con `API_KEY`) y las de escritura piden además `x-rol: admin` (403). Detalle de cada
+endpoint, cuerpos y ejemplos: [docs/API-SEDES-SERVICIOS.md](docs/API-SEDES-SERVICIOS.md).
 
 Formato de error único y seguro en toda la API (Semana 10):
 
@@ -281,3 +298,39 @@ En ese caso, en el `.env`: `DB_PORT=3306` (o el puerto de tu MySQL).
 - Las ramas que no llegaron a `main` en sus repos originales se conservan como
   `historial/u2/archivo-reservas`, `historial/u2/jeff` y `historial/g14/feature/encuestas-qa-docs`.
 - Cada paso de la fusión es un commit aparte con el formato `[TAG] módulo: descripción`.
+
+## 11. EE3 · Sedes y Servicios: seguridad, pruebas y documentación
+
+Mejoras de la Evidencia Evaluativa 3 sobre los recursos `/api/sedes` y `/api/servicios`.
+
+| Entregable | Dónde está |
+|---|---|
+| API validada y con manejo de errores | `src/validators/`, `src/middlewares/`, `src/models/` |
+| Pruebas unitarias y de integración | `tests/` · informe en [docs/PRUEBAS-SEDES-SERVICIOS.md](docs/PRUEBAS-SEDES-SERVICIOS.md) |
+| Documentación técnica de los endpoints | [docs/API-SEDES-SERVICIOS.md](docs/API-SEDES-SERVICIOS.md) |
+| Evidencias de las corridas | [docs/evidencias/](docs/evidencias/) |
+| Pruebas manuales con aserciones | `postman/kodo-sedes-servicios-pruebas.postman_collection.json` |
+
+### Cómo probar
+
+```bash
+npm install
+npm test
+```
+
+No hace falta MySQL: Jest usa una base en memoria con los datos del seed. Para la colección de
+Postman sí: levantar la base y la API, importar la colección y poner en su variable `apiKey` el
+valor de `API_KEY` del `.env`. Las dos colecciones anteriores también piden esa variable
+(`apiKey` y `apiKeyValida`).
+
+### Errores encontrados y mejoras aplicadas
+
+| Error encontrado | Mejora aplicada |
+|---|---|
+| Las rutas de sedes y servicios respondían sin credencial | `x-api-key` obligatoria en todas; `x-rol: admin` en POST, PUT y DELETE |
+| La llave de la API estaba escrita en el código y en una colección de Postman | Se lee solo de `API_KEY` en `.env`; sin ella la API no arranca |
+| Los 400 por regla de negocio devolvían `errores` como textos y los de formato como `{ campo, mensaje }` | Los modelos de sede y servicio emiten `{ campo, mensaje }`; un solo formato |
+| Un campo desconocido respondía con otro formato de error | Middleware `soloCamposPermitidos` con un error por campo |
+| 16 pruebas fallaban por filas de distinto largo en `test.each` | Error de la prueba: se corrigió la prueba, no el código |
+
+El detalle de cada uno (cómo se detectó, causa y corrección) está en el informe de pruebas.
