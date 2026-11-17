@@ -1,19 +1,17 @@
 // Aplicación Express: middlewares globales, rutas de los seis recursos y manejo de errores (Semana 10)
 const express = require('express');
 const cors = require('cors');
-const rutas = require('./routes');
 const trazabilidad = require('./middlewares/trazabilidad');
+const rutas = require('./routes');
 const { rutaNoEncontrada, manejarErrores } = require('./middlewares/manejarErrores');
 
 const app = express();
 
-// 1. Trazabilidad: genera idTraza y cabecera X-Request-Id (Slide 21, 31)
+// 1. Trazabilidad: asigna idTraza y cabecera X-Request-Id a todas las solicitudes
 app.use(trazabilidad);
 
-// CORS
+// 2. CORS y parsing de cuerpo JSON con límite de seguridad (10 KB)
 app.use(cors({ origin: process.env.CORS_ORIGIN || '*' }));
-
-// 2. Lee el cuerpo con límite de 10 KB (Slide 21, 25)
 app.use(express.json({ limit: '10kb' }));
 
 app.get('/', (req, res) => {
@@ -32,13 +30,13 @@ app.get('/', (req, res) => {
   });
 });
 
-// 3.  Rutas principales 
+// 3. Montaje de rutas de la API
 app.use('/api', rutas);
 
-// 4. Ruta no encontrada: delega a next(new NotFoundError(...)) (Slide 21, 33)
+// 4. Ruta no encontrada: delega al handler central con un 404 estandarizado
 app.use(rutaNoEncontrada);
 
-// 5. Manejador de errores central: SIEMPRE al final con 4 parámetros (Slide 20, 21, 26)
+// 5. Manejador de errores centralizado (4 parámetros, siempre al final)
 app.use(manejarErrores);
 
 module.exports = app;
