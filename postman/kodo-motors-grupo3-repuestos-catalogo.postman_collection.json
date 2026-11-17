@@ -1,0 +1,1618 @@
+{
+  "info": {
+    "name": "Kodo Motors · Grupo 3 · Repuestos y Catálogo (EE3)",
+    "description": "Pruebas funcionales de Repuestos y Catálogo: casos válidos, validaciones (400), no encontrados (404), duplicados (409) y reglas de negocio. Ejecutar en orden con la API levantada (npm run dev). Se puede repetir sin reiniciar la base: los datos nuevos usan códigos distintos en cada ejecución.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "event": [
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// Se ejecuta después de CADA petición: todo error debe cumplir el mismo contrato (Semana 10)",
+          "if (pm.response.code >= 400) {",
+          "  pm.test('Contrato de error', () => {",
+          "    const e = pm.response.json();",
+          "    pm.expect(e.estado).to.eql(pm.response.code);",
+          "    ['tipo', 'mensaje', 'idTraza', 'ruta'].forEach(k => pm.expect(e[k], k).to.be.a('string'));",
+          "    pm.expect(pm.response.headers.get('X-Request-Id')).to.eql(e.idTraza);",
+          "  });",
+          "}"
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:4000"
+    },
+    {
+      "key": "repuestoId",
+      "value": ""
+    },
+    {
+      "key": "codigoNuevo",
+      "value": ""
+    },
+    {
+      "key": "catalogoId",
+      "value": ""
+    },
+    {
+      "key": "versionNueva",
+      "value": ""
+    }
+  ],
+  "item": [
+    {
+      "name": "01 · Repuestos · casos válidos",
+      "item": [
+        {
+          "name": "R01 · Listar repuestos",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Devuelve un arreglo', () => pm.expect(pm.response.json()).to.be.an('array'));",
+                  "pm.test('Responde en menos de 1000 ms', () => pm.expect(pm.response.responseTime).to.be.below(1000));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos"
+              ]
+            }
+          }
+        },
+        {
+          "name": "R02 · Filtrar por bajo stock",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Todos tienen alerta de bajo stock', () => pm.response.json().forEach(r => pm.expect(r.alertaBajoStock).to.eql(true)));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos?bajo_stock=true",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos"
+              ],
+              "query": [
+                {
+                  "key": "bajo_stock",
+                  "value": "true"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "R03 · Filtrar por modelo compatible",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Todos son de CX-5', () => pm.response.json().forEach(r => pm.expect(r.modeloCompatible).to.eql('CX-5')));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos?modelo_compatible=CX-5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos"
+              ],
+              "query": [
+                {
+                  "key": "modelo_compatible",
+                  "value": "CX-5"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "R04 · Registrar repuesto",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Código distinto en cada ejecución: la colección se puede repetir sin reiniciar la base",
+                  "pm.collectionVariables.set('codigoNuevo', 'g3-' + String(Date.now()).slice(-8));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Guarda el id para las siguientes peticiones', () => pm.collectionVariables.set('repuestoId', pm.response.json().id));",
+                  "pm.test('El código se guarda en mayúsculas', () => pm.expect(pm.response.json().codigo).to.eql(pm.collectionVariables.get('codigoNuevo').toUpperCase()));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"{{codigoNuevo}}\",\n  \"nombre\": \"Bujía de iridio\",\n  \"modelo_compatible\": \"CX-5\",\n  \"precio\": 68.5,\n  \"stock\": 3,\n  \"stock_minimo\": 2,\n  \"ubicacion\": \"C-07\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "R05 · Consultar el repuesto creado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Es el repuesto creado', () => pm.expect(pm.response.json().nombre).to.eql('Bujía de iridio'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos/{{repuestoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos",
+                "{{repuestoId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "R06 · Actualizar solo el precio",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cambió el precio', () => pm.expect(pm.response.json().precio).to.eql(72.9));",
+                  "pm.test('Conserva el nombre', () => pm.expect(pm.response.json().nombre).to.eql('Bujía de iridio'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos/{{repuestoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos",
+                "{{repuestoId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"precio\": 72.9\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "02 · Repuestos · validaciones y errores",
+      "item": [
+        {
+          "name": "R07 · Sin campos obligatorios (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('tipo = VALIDACION', () => pm.expect(pm.response.json().tipo).to.eql('VALIDACION'));",
+                  "pm.test('Error en: codigo, nombre, modelo_compatible, precio', () => pm.expect(pm.response.json().errores.map(e => e.campo).sort()).to.eql([\"codigo\", \"modelo_compatible\", \"nombre\", \"precio\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "R08 · Precio negativo (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error en: precio', () => pm.expect(pm.response.json().errores.map(e => e.campo).sort()).to.eql([\"precio\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"ZZ99-00-001\",\n  \"nombre\": \"Bujía de iridio\",\n  \"modelo_compatible\": \"CX-5\",\n  \"precio\": -20,\n  \"stock\": 3,\n  \"stock_minimo\": 2,\n  \"ubicacion\": \"C-07\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "R09 · Precio 0, valor límite (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error en: precio', () => pm.expect(pm.response.json().errores.map(e => e.campo).sort()).to.eql([\"precio\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"ZZ99-00-001\",\n  \"nombre\": \"Bujía de iridio\",\n  \"modelo_compatible\": \"CX-5\",\n  \"precio\": 0,\n  \"stock\": 3,\n  \"stock_minimo\": 2,\n  \"ubicacion\": \"C-07\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "R10 · Precio con 3 decimales (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error en: precio', () => pm.expect(pm.response.json().errores.map(e => e.campo).sort()).to.eql([\"precio\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"ZZ99-00-001\",\n  \"nombre\": \"Bujía de iridio\",\n  \"modelo_compatible\": \"CX-5\",\n  \"precio\": 45.555,\n  \"stock\": 3,\n  \"stock_minimo\": 2,\n  \"ubicacion\": \"C-07\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "R11 · Modelo que no es Mazda (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error en: modelo_compatible', () => pm.expect(pm.response.json().errores.map(e => e.campo).sort()).to.eql([\"modelo_compatible\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"ZZ99-00-001\",\n  \"nombre\": \"Bujía de iridio\",\n  \"modelo_compatible\": \"Corolla\",\n  \"precio\": 68.5,\n  \"stock\": 3,\n  \"stock_minimo\": 2,\n  \"ubicacion\": \"C-07\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "R12 · Código con símbolos (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error en: codigo', () => pm.expect(pm.response.json().errores.map(e => e.campo).sort()).to.eql([\"codigo\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"PE01#14\",\n  \"nombre\": \"Bujía de iridio\",\n  \"modelo_compatible\": \"CX-5\",\n  \"precio\": 68.5,\n  \"stock\": 3,\n  \"stock_minimo\": 2,\n  \"ubicacion\": \"C-07\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "R13 · Stock decimal (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error en: stock', () => pm.expect(pm.response.json().errores.map(e => e.campo).sort()).to.eql([\"stock\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"ZZ99-00-001\",\n  \"nombre\": \"Bujía de iridio\",\n  \"modelo_compatible\": \"CX-5\",\n  \"precio\": 68.5,\n  \"stock\": 2.5,\n  \"stock_minimo\": 2,\n  \"ubicacion\": \"C-07\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "R14 · Enviar la bandera activo (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error en: activo', () => pm.expect(pm.response.json().errores.map(e => e.campo).sort()).to.eql([\"activo\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"ZZ99-00-001\",\n  \"nombre\": \"Bujía de iridio\",\n  \"modelo_compatible\": \"CX-5\",\n  \"precio\": 68.5,\n  \"stock\": 3,\n  \"stock_minimo\": 2,\n  \"ubicacion\": \"C-07\",\n  \"activo\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "R15 · JSON mal formado (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('tipo = SOLICITUD_INVALIDA', () => pm.expect(pm.response.json().tipo).to.eql('SOLICITUD_INVALIDA'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{ \"codigo\": \"ZZ99-00-001\", }",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "R16 · Id que no es número (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error en: id', () => pm.expect(pm.response.json().errores.map(e => e.campo).sort()).to.eql([\"id\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos/abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos",
+                "abc"
+              ]
+            }
+          }
+        },
+        {
+          "name": "R17 · Filtro inválido (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error en: bajo_stock', () => pm.expect(pm.response.json().errores.map(e => e.campo).sort()).to.eql([\"bajo_stock\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos?bajo_stock=quizas",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos"
+              ],
+              "query": [
+                {
+                  "key": "bajo_stock",
+                  "value": "quizas"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "R18 · Repuesto inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 404', () => pm.response.to.have.status(404));",
+                  "pm.test('tipo = NO_ENCONTRADO', () => pm.expect(pm.response.json().tipo).to.eql('NO_ENCONTRADO'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos",
+                "999999"
+              ]
+            }
+          }
+        },
+        {
+          "name": "R19 · Código repetido (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 409', () => pm.response.to.have.status(409));",
+                  "pm.test('tipo = CONFLICTO', () => pm.expect(pm.response.json().tipo).to.eql('CONFLICTO'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"{{codigoNuevo}}\",\n  \"nombre\": \"Bujía de iridio\",\n  \"modelo_compatible\": \"CX-5\",\n  \"precio\": 68.5,\n  \"stock\": 3,\n  \"stock_minimo\": 2,\n  \"ubicacion\": \"C-07\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "03 · Repuestos · regla de negocio (baja con stock)",
+      "item": [
+        {
+          "name": "R20 · Dar de baja con stock (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Explica que aún tiene stock', () => pm.expect(pm.response.json().mensaje).to.include('stock disponible'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos/{{repuestoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos",
+                "{{repuestoId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "R21 · Dejar el stock en 0",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Stock en 0', () => pm.expect(pm.response.json().stock).to.eql(0));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos/{{repuestoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos",
+                "{{repuestoId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"stock\": 0\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "R22 · Dar de baja sin stock (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos/{{repuestoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos",
+                "{{repuestoId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "R23 · Ya no existe (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 404', () => pm.response.to.have.status(404));",
+                  "pm.test('tipo = NO_ENCONTRADO', () => pm.expect(pm.response.json().tipo).to.eql('NO_ENCONTRADO'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos/{{repuestoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos",
+                "{{repuestoId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "R24 · Su código no se puede reutilizar (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 409', () => pm.response.to.have.status(409));",
+                  "pm.test('Avisa que fue dado de baja', () => pm.expect(pm.response.json().mensaje).to.include('dado de baja'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/repuestos",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "repuestos"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"codigo\": \"{{codigoNuevo}}\",\n  \"nombre\": \"Bujía de iridio\",\n  \"modelo_compatible\": \"CX-5\",\n  \"precio\": 68.5,\n  \"stock\": 3,\n  \"stock_minimo\": 2,\n  \"ubicacion\": \"C-07\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "04 · Catálogo · casos válidos",
+      "item": [
+        {
+          "name": "C01 · Listar catálogo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Devuelve un arreglo', () => pm.expect(pm.response.json()).to.be.an('array'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalogo"
+              ]
+            }
+          }
+        },
+        {
+          "name": "C02 · Registrar vehículo",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "// Versión distinta en cada ejecución: modelo + versión + año no se puede repetir",
+                  "pm.collectionVariables.set('versionNueva', 'G3 ' + String(Date.now()).slice(-8));"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 201', () => pm.response.to.have.status(201));",
+                  "pm.test('Guarda el id para las siguientes peticiones', () => pm.collectionVariables.set('catalogoId', pm.response.json().id));",
+                  "pm.test('Es el modelo enviado', () => pm.expect(pm.response.json().modelo).to.eql('CX-50'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalogo"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modelo\": \"CX-50\",\n  \"version\": \"{{versionNueva}}\",\n  \"anio\": 2026,\n  \"precio_usd\": 41990,\n  \"stock\": 2,\n  \"combustible\": \"hibrido\",\n  \"transmision\": \"automatica\",\n  \"destacado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "C03 · Consultar el vehículo creado",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Es el vehículo creado', () => pm.expect(pm.response.json().id).to.eql(Number(pm.collectionVariables.get('catalogoId'))));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo/{{catalogoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalogo",
+                "{{catalogoId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "C04 · Actualizar el vehículo",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 200', () => pm.response.to.have.status(200));",
+                  "pm.test('Cambió el stock', () => pm.expect(pm.response.json().stock).to.eql(9));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo/{{catalogoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalogo",
+                "{{catalogoId}}"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modelo\": \"CX-50\",\n  \"version\": \"{{versionNueva}}\",\n  \"anio\": 2026,\n  \"precio_usd\": 41990,\n  \"stock\": 9,\n  \"combustible\": \"hibrido\",\n  \"transmision\": \"automatica\",\n  \"destacado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "05 · Catálogo · validaciones y errores",
+      "item": [
+        {
+          "name": "C05 · Sin campos obligatorios (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('tipo = VALIDACION', () => pm.expect(pm.response.json().tipo).to.eql('VALIDACION'));",
+                  "pm.test('Error en: modelo, version, anio, precio_usd, combustible, transmision', () => pm.expect(pm.response.json().errores.map(e => e.campo).sort()).to.eql([\"anio\", \"combustible\", \"modelo\", \"precio_usd\", \"transmision\", \"version\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalogo"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "C06 · Modelo que no es Mazda (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error en: modelo', () => pm.expect(pm.response.json().errores.map(e => e.campo).sort()).to.eql([\"modelo\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalogo"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modelo\": \"Corolla\",\n  \"version\": \"Prueba validación\",\n  \"anio\": 2026,\n  \"precio_usd\": 41990,\n  \"stock\": 2,\n  \"combustible\": \"hibrido\",\n  \"transmision\": \"automatica\",\n  \"destacado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "C07 · Año 1899, valor límite (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error en: anio', () => pm.expect(pm.response.json().errores.map(e => e.campo).sort()).to.eql([\"anio\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalogo"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modelo\": \"CX-50\",\n  \"version\": \"Prueba validación\",\n  \"anio\": 1899,\n  \"precio_usd\": 41990,\n  \"stock\": 2,\n  \"combustible\": \"hibrido\",\n  \"transmision\": \"automatica\",\n  \"destacado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "C08 · Precio 0, valor límite (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error en: precio_usd', () => pm.expect(pm.response.json().errores.map(e => e.campo).sort()).to.eql([\"precio_usd\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalogo"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modelo\": \"CX-50\",\n  \"version\": \"Prueba validación\",\n  \"anio\": 2026,\n  \"precio_usd\": 0,\n  \"stock\": 2,\n  \"combustible\": \"hibrido\",\n  \"transmision\": \"automatica\",\n  \"destacado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "C09 · Combustible no permitido (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error en: combustible', () => pm.expect(pm.response.json().errores.map(e => e.campo).sort()).to.eql([\"combustible\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalogo"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modelo\": \"CX-50\",\n  \"version\": \"Prueba validación\",\n  \"anio\": 2026,\n  \"precio_usd\": 41990,\n  \"stock\": 2,\n  \"combustible\": \"gas\",\n  \"transmision\": \"automatica\",\n  \"destacado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "C10 · Stock negativo (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error en: stock', () => pm.expect(pm.response.json().errores.map(e => e.campo).sort()).to.eql([\"stock\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalogo"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modelo\": \"CX-50\",\n  \"version\": \"Prueba validación\",\n  \"anio\": 2026,\n  \"precio_usd\": 41990,\n  \"stock\": -1,\n  \"combustible\": \"hibrido\",\n  \"transmision\": \"automatica\",\n  \"destacado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        },
+        {
+          "name": "C11 · Id que no es número (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Error en: id', () => pm.expect(pm.response.json().errores.map(e => e.campo).sort()).to.eql([\"id\"]));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo/abc",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalogo",
+                "abc"
+              ]
+            }
+          }
+        },
+        {
+          "name": "C12 · Vehículo inexistente (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 404', () => pm.response.to.have.status(404));",
+                  "pm.test('tipo = NO_ENCONTRADO', () => pm.expect(pm.response.json().tipo).to.eql('NO_ENCONTRADO'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo/999999",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalogo",
+                "999999"
+              ]
+            }
+          }
+        },
+        {
+          "name": "C13 · Modelo + versión + año repetido (409)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 409', () => pm.response.to.have.status(409));",
+                  "pm.test('tipo = CONFLICTO', () => pm.expect(pm.response.json().tipo).to.eql('CONFLICTO'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalogo"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"modelo\": \"CX-50\",\n  \"version\": \"{{versionNueva}}\",\n  \"anio\": 2026,\n  \"precio_usd\": 41990,\n  \"stock\": 2,\n  \"combustible\": \"hibrido\",\n  \"transmision\": \"automatica\",\n  \"destacado\": true\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "06 · Catálogo · borrado lógico",
+      "item": [
+        {
+          "name": "C14 · Dar de baja (204)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 204', () => pm.response.to.have.status(204));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo/{{catalogoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalogo",
+                "{{catalogoId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "C15 · Ya no existe (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 404', () => pm.response.to.have.status(404));",
+                  "pm.test('tipo = NO_ENCONTRADO', () => pm.expect(pm.response.json().tipo).to.eql('NO_ENCONTRADO'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo/{{catalogoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalogo",
+                "{{catalogoId}}"
+              ]
+            }
+          }
+        },
+        {
+          "name": "C16 · Dar de baja dos veces (404)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Estado 404', () => pm.response.to.have.status(404));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/catalogo/{{catalogoId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "catalogo",
+                "{{catalogoId}}"
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
