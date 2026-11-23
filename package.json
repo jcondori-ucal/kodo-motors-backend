@@ -7,10 +7,14 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "jest --runInBand",
-    "test:legacy": "node test-suite.js",
     "test:unit": "jest --runInBand tests/unit",
     "test:functional": "jest --runInBand tests/functional",
+    "test:integracion": "jest --runInBand tests/integracion",
+    "test:reservas": "jest --runInBand tests/unit/reservas",
     "test:watch": "jest --watch",
+    "test:verbose": "jest --runInBand --verbose",
+    "test:legacy": "node test-suite.js",
+    "test:postman": "npx newman run postman/kodo-motors-manejo-errores.postman_collection.json",
     "coverage": "jest --runInBand --coverage",
     "bd:levantar": "docker compose up -d",
     "bd:detener": "docker compose down",
@@ -26,6 +30,12 @@
   "author": "Equipos E03, u2 y Grupo1-4 · EE2 Fundamentos de Desarrollo Back-End, UCAL",
   "license": "ISC",
   "private": true,
+  "jest": {
+    "testEnvironment": "node",
+    "roots": [
+      "<rootDir>/tests"
+    ]
+  },
   "engines": {
     "node": ">=18"
   },

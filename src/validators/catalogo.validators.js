@@ -18,7 +18,7 @@ const reglasCatalogo = () => [
 
   body('anio')
     .notEmpty().withMessage('El año es obligatorio').bail()
-    .isInt({ min: 1900 }).withMessage('El año debe ser un entero mayor o igual a 1900')
+    .isInt({ min: 1990, max:2026 }).withMessage('El año debe ser un entero mayor o igual a 1900')
     .toInt(),
 
   body('precio_usd')

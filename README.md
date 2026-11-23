@@ -8,16 +8,17 @@ Este documento corresponde a la **Evidencia Evaluativa 3** del curso *Fundamento
 
 ## Contenido
 
-1. [Empresa aliada](#1-empresa-aliada)
-2. [Equipo](#2-equipo)
-3. [Tecnologías](#3-tecnologías)
-4. [Estructura del proyecto](#4-estructura-del-proyecto)
-5. [Instalación](#5-instalación)
-6. [Ejecución](#6-ejecución)
-7. [Variables de entorno](#7-variables-de-entorno)
-8. [Endpoints](#8-endpoints)
-9. [Pruebas](#9-pruebas)
-10. [Incidencias detectadas](#10-incidencias-detectadas)
+1. [Nombre del proyecto](#1-nombre-del-proyecto)
+2. [Integrantes del equipo](#2-integrantes-del-equipo)
+3. [Empresa aliada](#3-empresa-aliada)
+4. [Descripción de la solución](#4-descripción-de-la-solución)
+5. [Tecnologías utilizadas](#5-tecnologías-utilizadas)
+6. [Instalación](#6-instalación)
+7. [Ejecución](#7-ejecución)
+8. [Endpoints principales](#8-endpoints-principales)
+9. [Base de datos](#9-base-de-datos)
+10. [Observaciones y problemas resueltos durante la integración](#10-observaciones-y-problemas-resueltos-durante-la-integración)
+11. [EE3 · Validaciones, pruebas y documentación (Grupo 3)](#11-ee3--validaciones-pruebas-y-documentación-grupo-3)
 
 ## 1. Empresa aliada
 
@@ -102,25 +103,33 @@ Comprobación rápida: `GET http://localhost:4000/api/salud`.
 
 El archivo `.env` **no se sube a GitHub**; solo se sube la plantilla `.env.example`, que contiene las claves:
 
-`PORT`, `CORS_ORIGIN`, `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `MYSQL_ROOT_PASSWORD`.
-
-## 8. Endpoints
-
-Base: `http://localhost:4000/api` · Formato: JSON · Persistencia: MySQL 8.4 (Docker).
-Cada endpoint indica método, ruta, parámetros, cuerpo, ejemplo de respuesta exitosa, ejemplo de error y códigos HTTP.
-
-### 8.1 Formato de error único
-
-Toda respuesta de error, de cualquier endpoint, tiene esta forma:
-
-```json
-{
-  "estado": 404,
-  "tipo": "NO_ENCONTRADO",
-  "mensaje": "Repuesto con ID 999 no encontrado en el inventario",
-  "idTraza": "d221180f",
-  "ruta": "GET /api/repuestos/999"
-}
+```
+kodo-motor-backend/
+├── database/
+│   ├── 01_schema.sql          # 14 tablas de kodo_db, trigger de encuestas
+│   └── 02_seed.sql            # datos de ejemplo
+├── postman/
+│   └── kodo-motor-backend.postman_collection.json
+├── src/
+│   ├── server.js              # entrada: prueba MySQL y levanta la API
+│   ├── app.js                 # CORS, JSON, rutas, 404 y errores
+│   ├── config/db.js           # pool de mysql2/promise
+│   ├── routes/                # un archivo por recurso + index.js
+│   ├── controllers/
+│   ├── services/
+│   ├── repositories/
+│   ├── models/
+│   ├── middlewares/           # validarId, manejarErrores
+│   ├── validators/            # reglas de express-validator por recurso
+│   └── utils/                 # HttpError, validaciones
+├── tests/                     # npm test (Jest + Supertest)
+│   ├── helpers/api.js         # app, esperarError y ayudas compartidas
+│   ├── unit/                  # clases de error y manejador central
+│   └── integracion/           # la API por HTTP, con el repositorio simulado
+├── docs/                      # documentación técnica y registro de pruebas
+├── test-suite.js              # npm run test:suite (verificación de la EE2)
+├── docker-compose.yml         # MySQL 8.4 y Adminer
+└── .env.example               # qué variables hay que definir (sin credenciales)
 ```
 
 Si hay errores por campo se agrega `"errores": [ ... ]`. La cabecera `X-Request-Id` repite el `idTraza`.
@@ -128,14 +137,20 @@ Un error inesperado responde `500` con `"mensaje": "Error interno del servidor"`
 
 | Código | `tipo` | Cuándo |
 |---|---|---|
-| 200 | — | Consulta o actualización correcta |
-| 201 | — | Registro creado |
-| 204 | — | Baja lógica correcta (sin cuerpo) |
-| 400 | `VALIDACION` | Campos faltantes o inválidos (trae `errores`) |
-| 400 | `SOLICITUD_INVALIDA` | Id no numérico, o regla de negocio que impide la operación |
-| 404 | `NO_ENCONTRADO` | El registro o la ruta no existen |
-| 409 | `CONFLICTO` | Valor único repetido |
-| 500 | `ERROR_INTERNO` | Error inesperado |
+| Node.js | 18 o superior | Ejecuta JavaScript en el servidor |
+| Express | 5.2 | Servidor HTTP, rutas y middlewares |
+| mysql2 | 3.24 | Pool de conexiones y consultas con placeholders |
+| dotenv | 17.4 | Lee el archivo `.env` |
+| cors | 2.8 | Permite que un frontend en otra dirección consuma la API |
+| MySQL | 8.4 | Base de datos relacional, en un contenedor Docker |
+| Docker Compose | — | Levanta MySQL y Adminer |
+| nodemon | 3.1 | Reinicia la API al guardar cambios |
+| express-validator | 7.3 | Valida y limpia los datos de entrada |
+| Jest | 30 | Pruebas automáticas |
+| Supertest | 7.3 | Peticiones HTTP a la API dentro de las pruebas |
+| Postman | — | Pruebas de los endpoints |
+
+## 6. Instalación
 
 ### 8.2 Repuestos · `/api/repuestos`
 
@@ -211,10 +226,16 @@ Piezas de repuesto y su stock. El `DELETE` es **borrado lógico**: la fila se co
 
 **GET `/api/repuestos/abc` → 400 `SOLICITUD_INVALIDA`**
 
-```json
-{ "estado": 400, "tipo": "SOLICITUD_INVALIDA", "mensaje": "El id debe ser un número entero positivo",
-  "idTraza": "24e8a900", "ruta": "GET /api/repuestos/abc" }
-```
+| Comando | Para qué |
+|---|---|
+| `npm run dev` | API con reinicio automático |
+| `npm start` | API sin nodemon |
+| `npm test` | Pruebas automáticas con Jest y Supertest, sin necesidad de base de datos |
+| `npm run test:unit` / `test:integracion` | Solo las pruebas unitarias o solo las de integración |
+| `npm run cobertura` | Pruebas con reporte de cobertura |
+| `npm run test:suite` | 61 pruebas de verificación de la EE2 (`test-suite.js`) |
+| `npm run bd:levantar` / `bd:detener` | Levanta o detiene MySQL |
+| `npm run bd:reiniciar` | Borra la base y la vuelve a crear desde `database/` |
 
 **DELETE `/api/repuestos/1` → 204** (sin cuerpo).
 **Regla de negocio:** si el repuesto todavía tiene `stock` mayor a 0, responde **400** y no lo da de baja.
@@ -263,13 +284,8 @@ El `DELETE` es borrado lógico.
   "errores": ["El campo \"puntuacion\" es obligatorio y debe ser un número entero entre 1 y 5"] }
 ```
 
-**POST con una orden que no existe → 404**
-
-```json
-{ "estado": 404, "tipo": "NO_ENCONTRADO",
-  "mensaje": "No se puede registrar la encuesta: La orden de servicio #99 no existe",
-  "idTraza": "6cd6e6e6", "ruta": "POST /api/encuestas" }
-```
+En sedes, servicios, catálogo, reservas y repuestos, los errores de formato llegan así, por campo. Las reglas
+que consultan la base responden `{ "mensaje": "..." }`, a veces con `errores` como lista de textos.
 
 **POST con una orden que no está entregada → 400 `SOLICITUD_INVALIDA`**
 
@@ -313,6 +329,50 @@ El `DELETE` es borrado lógico.
 
 | Incidencia | Causa | Mejora aplicada o pendiente |
 |---|---|---|
-| Las respuestas devuelven `modeloCompatible`, `stockMinimo` y `ordenId` (camelCase), pero el cuerpo que se envía usa `modelo_compatible`, `stock_minimo` y `orden_id` (snake_case) | Los modelos exponen sus propiedades en camelCase al serializar | Documentado en la sección 8 para que el cliente no se confunda |
-| La rama de trabajo partía de una versión anterior a la semana 10: sin `idTraza`, `AppError` ni `asyncHandler`, y con errores de la forma `{ "mensaje": ... }` | La rama se creó antes de integrar la capa de errores | Pendiente: integrar la capa de errores de la semana 10 y comprobar un `GET` real |
-| No se podía dar de baja un repuesto con stock | Regla de negocio de almacén | Documentada: responde 400 mientras `stock` sea mayor a 0 |
+| Conflicto de merge en `src/routes/index.js` | Dos integrantes agregaron sus rutas en las mismas líneas del archivo | Se conservaron las rutas de ambos, se quitaron las marcas `<<<<<<<`, `=======` y `>>>>>>>` y se completó el merge |
+| Conflicto de merge en `.gitignore` | Dos integrantes editaron el archivo en ramas distintas | Se resolvió en Visual Studio Code conservando las reglas de las dos ramas |
+| Trabajo subido a una rama distinta de la acordada | Un integrante subió su parte a `feature/errores-y-docs` | Se integró a `main` con `git merge` |
+| Una rama no permitía abrir un pull request | `feature/encuestas-qa-docs` se subió desde un clon anterior y no tenía historial común con `main` | Se creó la rama desde `origin/main` actualizado, sin `push --force` |
+| El precio llegaba como texto (`"380.00"`) | mysql2 devuelve las columnas `DECIMAL` como texto | `decimalNumbers: true` en el pool de `db.js` |
+| Las banderas llegaban como `1` y `0` | MySQL guarda `TINYINT(1)` como número | `typeCast` en `db.js` que las convierte en `true` y `false` |
+| El teléfono perdía el 0 inicial | Enviado como número, `014567890` se vuelve `14567890` | El teléfono se exige como texto de 9 dígitos |
+| Un `stock_minimo` de 0 se guardaba como 5 | `Number(stock_minimo) \|\| 5` trata el 0 como falso | Se cambió por `Number(stock_minimo ?? 5)`, que usa 5 solo si el campo no llega |
+| Un JSON mal formado devolvía una página HTML con rutas del disco | Express no tenía un manejador de errores de 4 parámetros | Middleware de errores que responde `400` en JSON |
+| Las tildes del seed se guardaban mal (`AtenciÃ³n`) | El contenedor ejecutaba los `.sql` con `latin1` | `SET NAMES utf8mb4;` al inicio de los scripts SQL |
+| Reservas y catálogo respondían los errores con formatos distintos | Cada módulo tenía su propia clase de error | Se unificaron en una sola clase y un manejador central |
+| Cada PC usaba un puerto de MySQL distinto | Docker publica el 3307, MySQL instalado usa el 3306 y XAMPP otro | El puerto se configura en `.env`, sin tocar código |
+| Riesgo de subir las claves de la base de datos | El `.env` tiene usuario y contraseña | `.env` está en `.gitignore`; solo se sube `.env.example` |
+
+### Trabajo colaborativo en GitHub
+
+- `main` contiene los commits de los tres repositorios originales unidos por merge, no copiados.
+  `git shortlog -sne` muestra a cada autor (`.mailmap` agrupa a quienes usaron dos correos).
+- Las ramas que no llegaron a `main` en sus repos originales se conservan como
+  `historial/u2/archivo-reservas`, `historial/u2/jeff` y `historial/g14/feature/encuestas-qa-docs`.
+- Cada paso de la fusión es un commit aparte con el formato `[TAG] módulo: descripción`.
+
+## 11. EE3 · Validaciones, pruebas y documentación (Grupo 3)
+
+El Grupo 3 trabajó los módulos de **Repuestos** y **Catálogo** en la rama `Grupo_3-ee3`.
+
+| Qué se hizo | Dónde está |
+|---|---|
+| Validaciones de repuestos con `express-validator` (obligatorios, formatos, tipos y rangos) | `src/validators/repuestos.validators.js` |
+| Mismo formato de error en repuestos y catálogo: `errores: [{ campo, mensaje }]` | `src/routes/repuestos.routes.js` |
+| Base de pruebas con Jest y Supertest | `package.json`, `tests/helpers/api.js` |
+| Pruebas unitarias y de integración | `tests/unit/`, `tests/integracion/` |
+| Pruebas funcionales en Postman con aserciones (`pm.test`) | `postman/kodo-motors-grupo3-repuestos-catalogo.postman_collection.json` |
+
+**Documentación**
+
+- [Documentación técnica de Repuestos y Catálogo](docs/API_REPUESTOS_CATALOGO.md): endpoints,
+  parámetros, cuerpos, ejemplos de éxito y de error, y códigos HTTP.
+- [Pruebas y registro de errores](docs/PRUEBAS_Y_REGISTRO_DE_ERRORES.md): cómo ejecutar las
+  pruebas, tabla de casos, resultados, errores encontrados y su corrección.
+
+**Probar en un minuto** (sin base de datos):
+
+```bash
+npm install
+npm test
+```

@@ -6,6 +6,9 @@ coverage/
 .env
 .env.zip
 
+# Reporte de cobertura de Jest (npm run cobertura)
+coverage/
+
 # Carpetas de trabajo locales de los equipos
 MODULOS_EQUIPO/
 .xd
@@ -16,3 +19,5 @@ __MACOSX/
 Thumbs.db
 *.log
 npm-debug.log*
+
+coverage/

@@ -1,6 +1,9 @@
 /**
  * Rutas: Endpoints del recurso Repuestos (Kodo Motors)
  * Prefijo: /api/repuestos · DELETE es borrado lógico
+ *
+ * Orden de cada ruta: reglas → validar → controlador.
+ * Si una regla falla, validar responde 400 y el controlador no se ejecuta.
  */
 const { Router } = require('express');
 const repuestosController = require('../controllers/repuestos.controller');
@@ -10,7 +13,6 @@ const { reglasRepuesto, reglasFiltrosRepuesto } = require('../validators/repuest
 
 const router = Router();
 
-// Handlers pasados por referencia (sin paréntesis)
 router.get('/', reglasFiltrosRepuesto(), validar, repuestosController.listar);
 router.get('/:id', idParam(), validar, repuestosController.obtenerPorId);
 router.post('/', reglasRepuesto(), validar, repuestosController.crear);
