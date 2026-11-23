@@ -119,7 +119,7 @@ kodo-motor-backend/
 │   ├── services/
 │   ├── repositories/
 │   ├── models/
-│   ├── middlewares/           # validarId, manejarErrores
+│   ├── middlewares/           # auth, trazabilidad, validarId, manejarErrores
 │   ├── validators/            # reglas de express-validator por recurso
 │   └── utils/                 # HttpError, validaciones
 ├── tests/                     # npm test (Jest + Supertest)
@@ -144,6 +144,9 @@ Un error inesperado responde `500` con `"mensaje": "Error interno del servidor"`
 | cors | 2.8 | Permite que un frontend en otra dirección consuma la API |
 | MySQL | 8.4 | Base de datos relacional, en un contenedor Docker |
 | Docker Compose | — | Levanta MySQL y Adminer |
+| express-validator | 7.3 | Reglas de validación y saneamiento por ruta |
+| Jest | 30 | Pruebas unitarias y de integración |
+| Supertest | 7 | Peticiones HTTP a la app sin levantar el servidor |
 | nodemon | 3.1 | Reinicia la API al guardar cambios |
 | express-validator | 7.3 | Valida y limpia los datos de entrada |
 | Jest | 30 | Pruebas automáticas |
@@ -192,6 +195,10 @@ Piezas de repuesto y su stock. El `DELETE` es **borrado lógico**: la fila se co
 > respuesta devuelve `modeloCompatible` y `stockMinimo` (camelCase) y agrega `alertaBajoStock`
 > (`true` cuando `stock` es menor o igual a `stockMinimo`).
 
+El `.env` incluye **`API_KEY`**: la llave que los clientes envían en la cabecera `x-api-key`.
+Cada integrante inventa la suya; sin ella la API no arranca.
+
+## 7. Ejecución
 **POST `/api/repuestos` → 201**
 
 ```json

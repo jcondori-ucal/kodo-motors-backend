@@ -1,75 +1,159 @@
+// Unitarias del servicio de servicios: la lógica de negocio aislada de MySQL con jest.mock (Semana 11, Slide 34)
 jest.mock('../../src/repositories/servicios.repository');
 jest.mock('../../src/repositories/reserva.repository');
 
-const repositorio = require('../../src/repositories/servicios.repository');
-const repositorioReservas = require('../../src/repositories/reserva.repository');
+const repo = require('../../src/repositories/servicios.repository');
+const repoReservas = require('../../src/repositories/reserva.repository');
 const servicio = require('../../src/services/servicios.service');
+const {
+  NotFoundError, ConflictError, BadRequestError, ValidationError,
+} = require('../../src/middlewares/errors/AppError');
 
-const datosValidos = {
-  nombre: 'Alineamiento computarizado',
-  categoria: 'neumaticos',
-  descripcion: 'Alineamiento de las cuatro ruedas',
-  precio: 120,
-  duracion_min: 60,
+const mantenimiento = {
+  id: 1, nombre: 'Mantenimiento 10 000 km', categoria: 'mantenimiento',
+  descripcion: 'Cambio de aceite, filtros y revisión de 30 puntos', precio: 380, duracion_min: 120, activo: true,
 };
 
-describe('Servicio de servicios', () => {
-  beforeEach(() => {
-    jest.resetAllMocks();
+const servicioNuevo = { nombre: 'Cambio de aceite', categoria: 'mantenimiento', precio: 180, duracion_min: 45 };
+
+beforeEach(() => jest.resetAllMocks());
+afterEach(() => jest.useRealTimers());
+
+describe('buscarServicioPorId', () => {
+  test('devuelve el servicio cuando existe', async () => {
+    repo.buscarPorId.mockResolvedValue(mantenimiento);
+
+    await expect(servicio.buscarServicioPorId(1)).resolves.toMatchObject({ id: 1, precio: 380 });
   });
 
-  test('crea un servicio válido y devuelve el registro creado', async () => {
-    repositorio.buscarPorNombre.mockResolvedValue(null);
-    repositorio.crear.mockResolvedValue(8);
-    repositorio.buscarPorId.mockResolvedValue({ id: 8, ...datosValidos, activo: true });
+  test('servicio inexistente o dado de baja → NotFoundError', async () => {
+    repo.buscarPorId.mockResolvedValue(undefined);
 
-    await expect(servicio.crearServicio(datosValidos)).resolves.toMatchObject({
-      id: 8,
-      nombre: datosValidos.nombre,
+    await expect(servicio.buscarServicioPorId(99)).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe('crearServicio', () => {
+  test('guarda el precio redondeado y la descripción ausente como null', async () => {
+    repo.buscarPorNombre.mockResolvedValue(undefined);
+    repo.crear.mockResolvedValue(6);
+    repo.buscarPorId.mockResolvedValue({ id: 6, ...servicioNuevo });
+
+    const creado = await servicio.crearServicio({ ...servicioNuevo, precio: 180.456 });
+
+    expect(repo.crear).toHaveBeenCalledWith({ ...servicioNuevo, precio: 180.46, descripcion: null });
+    expect(creado.id).toBe(6);
+  });
+
+  test('nombre repetido → ConflictError y NO guarda', async () => {
+    repo.buscarPorNombre.mockResolvedValue({ id: 1, activo: true });
+
+    const promesa = servicio.crearServicio(servicioNuevo);
+
+    await expect(promesa).rejects.toThrow(ConflictError);
+    await expect(promesa).rejects.toThrow(/Ya existe/);
+    expect(repo.crear).not.toHaveBeenCalled();
+  });
+
+  test('nombre de un servicio dado de baja → ConflictError que lo aclara', async () => {
+    repo.buscarPorNombre.mockResolvedValue({ id: 9, activo: false });
+
+    await expect(servicio.crearServicio(servicioNuevo)).rejects.toThrow(/dado de baja \(id 9\)/);
+    expect(repo.crear).not.toHaveBeenCalled();
+  });
+
+  test('precio 0 → ValidationError antes de consultar la base', async () => {
+    await expect(servicio.crearServicio({ ...servicioNuevo, precio: 0 })).rejects.toThrow(ValidationError);
+    expect(repo.buscarPorNombre).not.toHaveBeenCalled();
+  });
+
+  test.each([14, 481])('duración %i fuera de rango → 400 y NO guarda', async (duracion_min) => {
+    await expect(servicio.crearServicio({ ...servicioNuevo, duracion_min })).rejects.toMatchObject({ status: 400 });
+    expect(repo.crear).not.toHaveBeenCalled();
+  });
+});
+
+describe('actualizarServicio', () => {
+  test('cambia solo el precio y conserva lo demás', async () => {
+    repo.buscarPorId.mockResolvedValue(mantenimiento);
+    repo.buscarPorNombre.mockResolvedValue({ id: 1, activo: true }); // es él mismo: no hay conflicto
+
+    await servicio.actualizarServicio(1, { precio: 399.9 });
+
+    expect(repo.actualizar).toHaveBeenCalledWith(1, {
+      nombre: 'Mantenimiento 10 000 km', categoria: 'mantenimiento',
+      descripcion: 'Cambio de aceite, filtros y revisión de 30 puntos', precio: 399.9, duracion_min: 120,
     });
-    expect(repositorio.crear).toHaveBeenCalledWith(datosValidos);
   });
 
-  test.each([14, 481])('rechaza la duración límite inválida %i', async (duracion_min) => {
-    await expect(
-      servicio.crearServicio({ ...datosValidos, duracion_min })
-    ).rejects.toMatchObject({ status: 400 });
-    expect(repositorio.crear).not.toHaveBeenCalled();
+  test('renombrarlo como otro servicio → ConflictError y NO actualiza', async () => {
+    repo.buscarPorId.mockResolvedValue(mantenimiento);
+    repo.buscarPorNombre.mockResolvedValue({ id: 2, activo: true });
+
+    await expect(servicio.actualizarServicio(1, { nombre: 'Diagnóstico computarizado' }))
+      .rejects.toThrow(ConflictError);
+    expect(repo.actualizar).not.toHaveBeenCalled();
   });
 
-  test.each([
-    [{ id: 2, activo: true }, 'Ya existe'],
-    [{ id: 2, activo: false }, 'dado de baja'],
-  ])('rechaza un nombre ocupado', async (existente, mensaje) => {
-    repositorio.buscarPorNombre.mockResolvedValue(existente);
-
-    await expect(servicio.crearServicio(datosValidos)).rejects.toMatchObject({
-      status: 409,
-      message: expect.stringContaining(mensaje),
-    });
-    expect(repositorio.crear).not.toHaveBeenCalled();
+  test('sin campos → BadRequestError', async () => {
+    await expect(servicio.actualizarServicio(1, {})).rejects.toThrow(BadRequestError);
   });
 
-  test('responde 404 cuando el servicio no existe', async () => {
-    repositorio.buscarPorId.mockResolvedValue(undefined);
+  test('servicio inexistente → NotFoundError', async () => {
+    repo.buscarPorId.mockResolvedValue(undefined);
 
-    await expect(servicio.buscarServicioPorId(999)).rejects.toMatchObject({ status: 404 });
+    await expect(servicio.actualizarServicio(99, { precio: 100 })).rejects.toThrow(NotFoundError);
+  });
+});
+
+describe('eliminarServicio (borrado lógico)', () => {
+  test('sin citas pendientes: da de baja', async () => {
+    repoReservas.contarCitasPendientesDeServicio.mockResolvedValue(0);
+    repo.eliminar.mockResolvedValue(true);
+
+    await expect(servicio.eliminarServicio(5)).resolves.toBeUndefined();
+    expect(repo.eliminar).toHaveBeenCalledWith(5);
   });
 
-  test('impide la baja cuando hay citas pendientes', async () => {
-    repositorioReservas.contarCitasPendientesDeServicio.mockResolvedValue(2);
+  test('con citas pendientes → ConflictError y NO da de baja', async () => {
+    repoReservas.contarCitasPendientesDeServicio.mockResolvedValue(2);
 
-    await expect(servicio.eliminarServicio(4)).rejects.toMatchObject({
-      status: 409,
-      message: expect.stringContaining('citas generadas pendientes'),
-    });
-    expect(repositorio.eliminar).not.toHaveBeenCalled();
+    const promesa = servicio.eliminarServicio(1);
+
+    await expect(promesa).rejects.toThrow(ConflictError);
+    await expect(promesa).rejects.toThrow(/citas generadas pendientes/);
+    expect(repo.eliminar).not.toHaveBeenCalled();
   });
 
-  test('responde 404 al eliminar un servicio inexistente', async () => {
-    repositorioReservas.contarCitasPendientesDeServicio.mockResolvedValue(0);
-    repositorio.eliminar.mockResolvedValue(false);
+  test('servicio inexistente o ya dado de baja → NotFoundError', async () => {
+    repoReservas.contarCitasPendientesDeServicio.mockResolvedValue(0);
+    repo.eliminar.mockResolvedValue(false);
 
-    await expect(servicio.eliminarServicio(999)).rejects.toMatchObject({ status: 404 });
+    await expect(servicio.eliminarServicio(99)).rejects.toThrow(NotFoundError);
+  });
+
+  test('cuenta las citas desde HOY (reloj congelado en 2026-12-31)', async () => {
+    jest.useFakeTimers({ now: new Date('2026-12-31T23:30:00') });
+    repoReservas.contarCitasPendientesDeServicio.mockResolvedValue(0);
+    repo.eliminar.mockResolvedValue(true);
+
+    await servicio.eliminarServicio(1);
+
+    expect(repoReservas.contarCitasPendientesDeServicio).toHaveBeenCalledWith(1, '2026-12-31');
+  });
+});
+
+describe('listarServicios', () => {
+  test('filtra por una categoría válida', async () => {
+    repo.listar.mockResolvedValue([]);
+
+    await servicio.listarServicios({ categoria: 'frenos' });
+
+    expect(repo.listar).toHaveBeenCalledWith({ categoria: 'frenos' });
+  });
+
+  test('categoría inexistente → BadRequestError y no consulta', async () => {
+    await expect(servicio.listarServicios({ categoria: 'lavado' })).rejects.toThrow(BadRequestError);
+    expect(repo.listar).not.toHaveBeenCalled();
   });
 });

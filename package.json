@@ -15,6 +15,7 @@
     "test:verbose": "jest --runInBand --verbose",
     "test:legacy": "node test-suite.js",
     "test:postman": "npx newman run postman/kodo-motors-manejo-errores.postman_collection.json",
+    "test:postman:sedes-servicios": "npx newman run postman/kodo-sedes-servicios-pruebas.postman_collection.json",
     "coverage": "jest --runInBand --coverage",
     "bd:levantar": "docker compose up -d",
     "bd:detener": "docker compose down",
