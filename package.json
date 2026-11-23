@@ -7,16 +7,18 @@
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
     "test": "jest --runInBand",
-    "test:verbose": "jest --runInBand --verbose",
     "test:unit": "jest --runInBand tests/unit",
+    "test:functional": "jest --runInBand tests/functional",
     "test:integracion": "jest --runInBand tests/integracion",
-    "test:suite": "node test-suite.js",
-    "cobertura": "jest --runInBand --coverage",
+    "test:reservas": "jest --runInBand tests/unit/reservas",
+    "test:watch": "jest --watch",
+    "test:verbose": "jest --runInBand --verbose",
+    "test:legacy": "node test-suite.js",
     "test:postman": "npx newman run postman/kodo-motors-manejo-errores.postman_collection.json",
+    "coverage": "jest --runInBand --coverage",
     "bd:levantar": "docker compose up -d",
     "bd:detener": "docker compose down",
-    "bd:reiniciar": "docker compose down -v && docker compose up -d",
-    "test:reservas": "jest --runInBand tests/unit/reservas"
+    "bd:reiniciar": "docker compose down -v && docker compose up -d"
   },
   "keywords": [
     "kodo-motors",

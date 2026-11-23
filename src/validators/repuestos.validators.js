@@ -1,67 +1,84 @@
-// Formato de los campos de un repuesto (Semana 9).
-// Las reglas que consultan la BD (código único, baja con stock) están en repuestos.service.js
 const { body, query } = require('express-validator');
-const Repuesto = require('../models/repuesto.model');
+const { MODELOS_PERMITIDOS } = require('../models/repuesto.model');
 const {
-  ENTERO_MAXIMO, campo, esTextoONumero, textoObligatorio, textoOpcional,
+  ENTERO_MAXIMO,
+  campo,
+  esTextoONumero,
+  textoObligatorio,
+  textoOpcional,
 } = require('./common');
 
-const MODELOS = Repuesto.MODELOS_PERMITIDOS;
-const PRECIO_MAXIMO = 999999.99; // la columna es DECIMAL(8,2)
-const FORMATO_CODIGO = /^[A-Z0-9-]+$/; // ej. PE01-14-302
+const FORMATO_CODIGO = /^[A-Z0-9-]+$/;
+const FORMATO_NOMBRE = /^[\p{L}\d][\p{L}\d .,'’()/-]*$/u;
+const PRECIO_MAXIMO = 999999.99; // límite DECIMAL(8,2)
+const CAMPOS_ACTUALIZABLES = ['codigo', 'nombre', 'modelo_compatible', 'precio', 'stock', 'stock_minimo', 'ubicacion'];
 
-// Entero opcional de 0 en adelante (stock y stock_minimo).
-const enteroDesdeCero = (nombre) =>
-  body(nombre).optional()
-    .custom(esTextoONumero).withMessage(`${nombre} debe ser un entero mayor o igual a 0`).bail()
-    .isInt({ min: 0, max: ENTERO_MAXIMO }).withMessage(`${nombre} debe ser un entero mayor o igual a 0`)
-    .toInt();
-
-// parcial = false → POST (campos obligatorios) · parcial = true → PUT (solo valida lo que llega)
+// parcial = true en PUT: solo se validan los campos enviados.
 const reglasRepuesto = (parcial = false) => [
   body('id').not().exists().withMessage('El id no se puede enviar'),
+  body('activo').not().exists().withMessage('Activo no se puede enviar; para dar de baja usa DELETE'),
 
-  campo('codigo', parcial)
-    .notEmpty({ ignore_whitespace: true }).withMessage('El código es obligatorio').bail()
-    .isString().withMessage('El código debe ser texto').bail()
-    .trim()
+  ...(parcial
+    ? [
+        body().custom((valor) => {
+          if (!valor || typeof valor !== 'object' || Array.isArray(valor)) {
+            throw new Error('El cuerpo de la solicitud debe ser un objeto JSON');
+          }
+          if (valor.id !== undefined || valor.activo !== undefined) return true;
+          const tieneCambios = CAMPOS_ACTUALIZABLES.some((c) => valor[c] !== undefined);
+          if (!tieneCambios) {
+            throw new Error('Envía al menos un campo válido para actualizar');
+          }
+          return true;
+        }),
+      ]
+    : []),
+
+  textoObligatorio('codigo', 'El código es obligatorio', parcial)
     .toUpperCase()
     .isLength({ min: 3, max: 20 }).withMessage('El código debe tener entre 3 y 20 caracteres').bail()
-    .matches(FORMATO_CODIGO).withMessage('El código solo admite letras, números y guiones (ej. PE01-14-302)'),
+    .matches(FORMATO_CODIGO).withMessage('El código solo admite letras, números y guiones (-)'),
 
   textoObligatorio('nombre', 'El nombre es obligatorio', parcial)
-    .isLength({ max: 100 }).withMessage('El nombre admite máximo 100 caracteres'),
+    .isLength({ min: 3, max: 100 }).withMessage('El nombre debe tener entre 3 y 100 caracteres').bail()
+    .matches(FORMATO_NOMBRE).withMessage('El nombre solo admite letras, números y . , \' - ( ) /'),
 
   campo('modelo_compatible', parcial)
-    .notEmpty().withMessage('El modelo compatible es obligatorio').bail()
-    .isIn(MODELOS).withMessage(`El modelo compatible debe ser uno de: ${MODELOS.join(', ')}`),
+    .notEmpty({ ignore_whitespace: true }).withMessage('El modelo compatible es obligatorio').bail()
+    .isString().withMessage('El modelo compatible debe ser texto').bail()
+    .trim()
+    .isIn(MODELOS_PERMITIDOS).withMessage(`El modelo compatible debe ser uno de: ${MODELOS_PERMITIDOS.join(', ')}`),
 
   campo('precio', parcial)
     .notEmpty().withMessage('El precio es obligatorio').bail()
     .custom(esTextoONumero).withMessage('El precio debe ser un número').bail()
-    .isFloat({ gt: 0, max: PRECIO_MAXIMO }).withMessage(`El precio debe ser mayor a 0 y máximo ${PRECIO_MAXIMO}`).bail()
-    .isDecimal({ decimal_digits: '0,2' }).withMessage('El precio admite máximo 2 decimales')
+    .isDecimal({ decimal_digits: '0,2' }).withMessage('El precio debe ser un número con máximo 2 decimales').bail()
+    .custom((valor) => Number(valor) > 0 && Number(valor) <= PRECIO_MAXIMO)
+    .withMessage(`El precio debe ser mayor a 0 y máximo ${PRECIO_MAXIMO}`).bail()
     .toFloat(),
 
-  enteroDesdeCero('stock'),
-  enteroDesdeCero('stock_minimo'),
+  body('stock').optional()
+    .custom(esTextoONumero).withMessage('El stock debe ser un número entero').bail()
+    .isInt({ min: 0, max: ENTERO_MAXIMO }).withMessage('El stock debe ser un entero mayor o igual a 0').bail()
+    .toInt(),
+
+  body('stock_minimo').optional()
+    .custom(esTextoONumero).withMessage('El stock mínimo debe ser un número entero').bail()
+    .isInt({ min: 0, max: ENTERO_MAXIMO }).withMessage('El stock mínimo debe ser un entero mayor o igual a 0').bail()
+    .toInt(),
 
   textoOpcional('ubicacion', 20),
-
-  body('activo').not().exists().withMessage('Activo no se puede enviar; para dar de baja usa DELETE'),
 ];
 
-// Filtros de GET /api/repuestos. Un parámetro repetido llega como arreglo: isString lo rechaza.
+// Un parámetro repetido llega como arreglo: isString lo rechaza.
 const reglasFiltrosRepuesto = () => [
   query('modelo_compatible').optional()
     .isString().withMessage('El filtro modelo_compatible debe ser un solo valor').bail()
-    .isIn(MODELOS).withMessage(`El modelo compatible debe ser uno de: ${MODELOS.join(', ')}`),
+    .isIn(MODELOS_PERMITIDOS).withMessage(`El modelo compatible debe ser uno de: ${MODELOS_PERMITIDOS.join(', ')}`),
 
   query('bajo_stock').optional()
-    .isIn(['true', 'false']).withMessage('bajo_stock debe ser true o false'),
-
-  query('incluir_inactivos').optional()
-    .isIn(['true', 'false']).withMessage('incluir_inactivos debe ser true o false'),
+    .isString().withMessage('El filtro bajo_stock debe ser un solo valor').bail()
+    .isIn(['true', 'false', '1', '0']).withMessage('bajo_stock debe ser true, false, 1 o 0'),
 ];
 
-module.exports = { reglasRepuesto, reglasFiltrosRepuesto };
+module.exports = { reglasRepuesto, reglasFiltrosRepuesto, reglasFiltrosRepuestos: reglasFiltrosRepuesto };

@@ -11,6 +11,8 @@
  * 7. Contrato común: validarId y manejarErrores
  * 8. Validadores de sedes, servicios y reservas
  * 9. Reglas de negocio de reservas y bajas con citas pendientes
+ * 10. Validadores Express-Validator de repuestos y encuestas (Semana 10)
+ * 11. Contrato centralizado de error, trazabilidad y asyncHandler (Semana 10)
  */
 
 const fs = require('fs');
@@ -36,19 +38,19 @@ const catalogoRepository = require('./src/repositories/catalogo.repository');
 const reservaRepository = require('./src/repositories/reserva.repository');
 const lookupsRepository = require('./src/repositories/lookups.repository');
 const validarId = require('./src/middlewares/validarId');
-const { manejarErrores } = require('./src/middlewares/manejarErrores');
-const { pool } = require('./src/config/db');
+const { manejarErrores, rutaNoEncontrada } = require('./src/middlewares/manejarErrores');
+const trazabilidad = require('./src/middlewares/trazabilidad');
+const asyncHandler = require('./src/utils/asyncHandler');
 const {
   AppError,
-  NotFoundError,
-  ConflictError,
   BadRequestError,
   ValidationError,
+  NotFoundError,
+  ConflictError,
   UnauthorizedError,
   ForbiddenError,
 } = require('./src/middlewares/errors/AppError');
-const trazabilidad = require('./src/middlewares/trazabilidad');
-const { autenticar, autorizar } = require('./src/middlewares/auth');
+const { pool } = require('./src/config/db');
 const { validationResult } = require('express-validator');
 const { reglasSede } = require('./src/validators/sedes.validators');
 const { reglasServicio } = require('./src/validators/servicios.validators');
@@ -57,6 +59,15 @@ const {
   reglasActualizarReserva,
   reglasFiltrosReserva,
 } = require('./src/validators/reservas.validators');
+const {
+  reglasRepuesto,
+  reglasFiltrosRepuestos,
+} = require('./src/validators/repuestos.validators');
+const {
+  reglasCrearEncuesta,
+  reglasActualizarEncuesta,
+  reglasFiltrosEncuestas,
+} = require('./src/validators/encuestas.validators');
 
 const resultados = [];
 
@@ -670,158 +681,189 @@ async function ejecutarSuite() {
     );
   }
 
-  // --- SECCIÓN 10: CAPA DE MANEJO DE ERRORES - SEMANA 10 (SEDES, SERVICIOS Y RESERVAS) ---
-  console.log('\n🛡️ 10. Capa de Manejo de Errores - Semana 10 (Sedes, Servicios y Reservas)...');
+  // --- SECCIÓN 10: VALIDADORES EXPRESS-VALIDATOR DE REPUESTOS Y ENCUESTAS ---
+  console.log('\n⚙️ 10. Validadores de Repuestos y Encuestas (Semana 10)...');
 
-  // SEDES
-  sedesRepository.buscarPorId = async () => null;
-  error = await capturarError(() => sedesService.buscarSedePorId(999));
+  const repuestoValido = {
+    codigo: 'FLT-001',
+    nombre: 'Filtro de Aceite Skyactiv',
+    modelo_compatible: 'CX-5',
+    precio: 45.5,
+    stock: 10,
+    stock_minimo: 3,
+    ubicacion: 'Estante A1',
+  };
+  const sinErroresRepuesto = await camposConError(reglasRepuesto(false), { body: repuestoValido });
+  const erroresRepuestoInvalido = await camposConError(reglasRepuesto(false), {
+    body: {
+      codigo: 'AB',
+      nombre: '',
+      modelo_compatible: 'Inexistente',
+      precio: -10,
+      stock: -5,
+      activo: false,
+    },
+  });
   registrarPrueba(
     'CP-50',
-    'Sedes: buscar inexistente lanza NotFoundError (404, NO_ENCONTRADO)',
-    error instanceof NotFoundError && error.estado === 404 && error.tipo === 'NO_ENCONTRADO',
-    'NotFoundError 404 NO_ENCONTRADO',
-    error ? `${error.name} ${error.estado} ${error.tipo}` : 'No lanzó error'
+    'Repuestos: acepta válidos y rechaza código corto, modelo inválido, precio <= 0 y activo',
+    sinErroresRepuesto.length === 0 && erroresRepuestoInvalido.length >= 5 && erroresRepuestoInvalido.includes('activo'),
+    '0 errores válidos y al menos 5 campos rechazados incluyendo activo',
+    `válidos=${sinErroresRepuesto.length}, inválidos=${erroresRepuestoInvalido.length}`
   );
 
-  sedesRepository.buscarPorNombre = async () => ({ id: 1, activa: true });
-  error = await capturarError(() => sedesService.crearSede({
-    nombre: 'Sede Existente', distrito: 'Surco', direccion: 'Av. Primavera 100',
-    telefono: '014445566', hora_apertura: '08:00', hora_cierre: '18:00'
-  }));
+  const parcialRepuesto = await camposConError(reglasRepuesto(true), { body: { precio: 89.9 } });
+  const parcialRepuestoActivo = await camposConError(reglasRepuesto(true), { body: { activo: 1 } });
   registrarPrueba(
     'CP-51',
-    'Sedes: conflicto por nombre duplicado lanza ConflictError (409, CONFLICTO)',
-    error instanceof ConflictError && error.estado === 409 && error.tipo === 'CONFLICTO',
-    'ConflictError 409 CONFLICTO',
-    error ? `${error.name} ${error.estado} ${error.tipo}` : 'No lanzó error'
+    'Repuestos: PUT parcial acepta campos individuales y prohíbe activo',
+    parcialRepuesto.length === 0 && parcialRepuestoActivo.includes('activo'),
+    'PUT parcial válido y activo rechazado',
+    `parcial=${parcialRepuesto.length}, activo=${JSON.stringify(parcialRepuestoActivo)}`
   );
 
-  error = await capturarError(() => sedesService.actualizarSede(1, {}));
+  const filtrosRepuestoOk = await camposConError(reglasFiltrosRepuestos(), {
+    query: { modelo_compatible: 'CX-5', bajo_stock: 'true', incluir_inactivos: 'false' },
+  });
+  const filtrosRepuestoBad = await camposConError(reglasFiltrosRepuestos(), {
+    query: { modelo_compatible: 'Ferrari', bajo_stock: 'talvez' },
+  });
   registrarPrueba(
     'CP-52',
-    'Sedes: actualizar sin campos lanza BadRequestError (400, SOLICITUD_INVALIDA)',
-    error instanceof BadRequestError && error.estado === 400 && error.tipo === 'SOLICITUD_INVALIDA',
-    'BadRequestError 400 SOLICITUD_INVALIDA',
-    error ? `${error.name} ${error.estado} ${error.tipo}` : 'No lanzó error'
+    'Repuestos: filtros de consulta validan modelo y valores booleanos',
+    filtrosRepuestoOk.length === 0 && filtrosRepuestoBad.length === 2,
+    '0 errores con filtros válidos y 2 errores con inválidos',
+    `ok=${filtrosRepuestoOk.length}, bad=${filtrosRepuestoBad.length}`
   );
 
-  // SERVICIOS
-  serviciosRepository.buscarPorId = async () => null;
-  error = await capturarError(() => serviciosService.buscarServicioPorId(999));
+  const encuestaValida = {
+    orden_id: 15,
+    puntuacion: 5,
+    recomendaria: true,
+    comentario: 'Excelente servicio técnico',
+  };
+  const sinErroresEncuesta = await camposConError(reglasCrearEncuesta(), { body: encuestaValida });
+  const erroresEncuestaInvalida = await camposConError(reglasCrearEncuesta(), {
+    body: {
+      orden_id: 'abc',
+      puntuacion: 6,
+      recomendaria: 'no_se',
+      activo: 0,
+    },
+  });
   registrarPrueba(
     'CP-53',
-    'Servicios: buscar inexistente lanza NotFoundError (404, NO_ENCONTRADO)',
-    error instanceof NotFoundError && error.estado === 404 && error.tipo === 'NO_ENCONTRADO',
-    'NotFoundError 404 NO_ENCONTRADO',
-    error ? `${error.name} ${error.estado} ${error.tipo}` : 'No lanzó error'
+    'Encuestas: acepta válidos y rechaza orden_id no entero, puntuación fuera de 1-5 y activo',
+    sinErroresEncuesta.length === 0 && erroresEncuestaInvalida.length >= 3 && erroresEncuestaInvalida.includes('activo'),
+    '0 errores válidos y errores en orden_id, puntuacion, recomendaria, activo',
+    `válidos=${sinErroresEncuesta.length}, inválidos=${erroresEncuestaInvalida.length}`
   );
 
-  serviciosRepository.buscarPorNombre = async () => ({ id: 1, activo: true });
-  error = await capturarError(() => serviciosService.crearServicio({
-    nombre: 'Alineación', categoria: 'mantenimiento', precio: 120, duracion_min: 45
-  }));
+  const parcialEncuestaOk = await camposConError(reglasActualizarEncuesta(), { body: { puntuacion: 4 } });
+  const parcialEncuestaOrden = await camposConError(reglasActualizarEncuesta(), { body: { orden_id: 99 } });
   registrarPrueba(
     'CP-54',
-    'Servicios: conflicto por nombre repetido lanza ConflictError (409, CONFLICTO)',
-    error instanceof ConflictError && error.estado === 409 && error.tipo === 'CONFLICTO',
-    'ConflictError 409 CONFLICTO',
-    error ? `${error.name} ${error.estado} ${error.tipo}` : 'No lanzó error'
+    'Encuestas: PUT parcial rechaza modificación de orden_id y acepta actualización de puntuación',
+    parcialEncuestaOk.length === 0 && parcialEncuestaOrden.includes('orden_id'),
+    'Sin errores en cambio de puntuación y error en orden_id',
+    `ok=${parcialEncuestaOk.length}, orden_id_error=${JSON.stringify(parcialEncuestaOrden)}`
   );
 
-  error = await capturarError(() => servicioModelo.validarServicio({
-    nombre: 'Test', categoria: 'categoria_invalida', precio: -10, duracion_min: 0
-  }));
+  const filtrosEncuestaOk = await camposConError(reglasFiltrosEncuestas(), {
+    query: { puntuacion: '5', recomendaria: 'true' },
+  });
+  const filtrosEncuestaBad = await camposConError(reglasFiltrosEncuestas(), {
+    query: { puntuacion: '9', recomendaria: 'talvez' },
+  });
   registrarPrueba(
     'CP-55',
-    'Servicios: datos inválidos lanzan ValidationError (400, VALIDACION) con lista de errores',
-    error instanceof ValidationError && error.estado === 400 && error.tipo === 'VALIDACION' && Array.isArray(error.detalle),
-    'ValidationError 400 VALIDACION con detalle[]',
-    error ? `${error.name} ${error.estado} ${error.tipo} ${JSON.stringify(error.detalle)}` : 'No lanzó error'
+    'Encuestas: filtros de consulta validan puntuación 1-5 y formato de recomendaria',
+    filtrosEncuestaOk.length === 0 && filtrosEncuestaBad.length === 2,
+    '0 errores con filtros válidos y 2 errores con inválidos',
+    `ok=${filtrosEncuestaOk.length}, bad=${filtrosEncuestaBad.length}`
   );
 
-  // RESERVAS
-  reservaRepository.obtenerPorId = async () => null;
-  error = await capturarError(() => reservaService.obtenerPorId(999));
+  // --- SECCIÓN 11: CONTRATO DE ERROR CENTRALIZADO Y TRAZABILIDAD (SEMANA 10) ---
+  console.log('\n🛡️ 11. Contrato de Error Centralizado y Trazabilidad (Semana 10)...');
+
+  const reqTrazabilidad = { headers: {} };
+  const resTrazabilidad = {
+    headers: {},
+    setHeader(nombre, valor) { this.headers[nombre] = valor; },
+  };
+  let trazabilidadNext = false;
+  trazabilidad(reqTrazabilidad, resTrazabilidad, () => { trazabilidadNext = true; });
   registrarPrueba(
     'CP-56',
-    'Reservas: buscar inexistente lanza NotFoundError (404, NO_ENCONTRADO)',
-    error instanceof NotFoundError && error.estado === 404 && error.tipo === 'NO_ENCONTRADO',
-    'NotFoundError 404 NO_ENCONTRADO',
-    error ? `${error.name} ${error.estado} ${error.tipo}` : 'No lanzó error'
+    'Trazabilidad: genera req.idTraza de 8 caracteres y cabecera X-Request-Id (Slide 31)',
+    trazabilidadNext && typeof reqTrazabilidad.idTraza === 'string' && reqTrazabilidad.idTraza.length === 8
+      && resTrazabilidad.headers['X-Request-Id'] === reqTrazabilidad.idTraza,
+    'idTraza de 8 caracteres y cabecera X-Request-Id coincidente',
+    `idTraza=${reqTrazabilidad.idTraza}, header=${resTrazabilidad.headers['X-Request-Id']}`
   );
 
-  lookupsRepository.existeSede = async () => true;
-  lookupsRepository.existeServicio = async () => true;
-  lookupsRepository.existeVehiculo = async () => true;
-  sedesRepository.buscarPorId = async () => ({
-    id: 1, nombre: 'Kodo Surquillo', hora_apertura: '08:00:00', hora_cierre: '18:00:00', atiende_domingo: false,
+  let errorCapturadoAsync = null;
+  const handlerAsyncTest = asyncHandler(async () => {
+    throw new Error('Falla asíncrona controlada');
   });
-  serviciosRepository.buscarPorId = async () => ({ id: 1, duracion_min: 120 });
-  reservaRepository.existeChoque = async () => true;
-  error = await capturarError(() => reservaService.crear({
-    fecha: '2026-12-01', hora: '10:00', sede_id: 1, servicio_id: 1, vehiculo_id: 1
-  }));
+  await handlerAsyncTest({}, {}, (err) => { errorCapturadoAsync = err; });
   registrarPrueba(
     'CP-57',
-    'Reservas: choque de horario en misma sede, fecha y hora lanza ConflictError (409, CONFLICTO)',
-    error instanceof ConflictError && error.estado === 409 && error.tipo === 'CONFLICTO',
-    'ConflictError 409 CONFLICTO',
-    error ? `${error.name} ${error.estado} ${error.tipo}` : 'No lanzó error'
+    'asyncHandler: captura errores asíncronos y los envía a next(error) (Slide 22)',
+    errorCapturadoAsync instanceof Error && errorCapturadoAsync.message === 'Falla asíncrona controlada',
+    'Error pasado a next()',
+    errorCapturadoAsync ? errorCapturadoAsync.message : 'No capturado'
   );
 
-  error = await capturarError(() => reservaService.crear({}));
+  const reqContrato = { method: 'POST', originalUrl: '/api/repuestos', idTraza: 'abc12345' };
+  const resContrato = respuestaFalsa();
+  manejarErrores(new ConflictError('El código ya existe'), reqContrato, resContrato, () => {});
+  const cumpleContrato409 = resContrato.codigo === 409
+    && resContrato.cuerpo.estado === 409
+    && resContrato.cuerpo.tipo === 'CONFLICTO'
+    && resContrato.cuerpo.mensaje === 'El código ya existe'
+    && resContrato.cuerpo.idTraza === 'abc12345'
+    && resContrato.cuerpo.ruta === 'POST /api/repuestos';
   registrarPrueba(
     'CP-58',
-    'Reservas: body vacío lanza ValidationError (400, VALIDACION) con lista de errores',
-    error instanceof ValidationError && error.estado === 400 && error.tipo === 'VALIDACION' && error.detalle.length >= 5,
-    'ValidationError 400 VALIDACION con al menos 5 campos faltantes',
-    error ? `${error.name} ${error.estado} ${error.tipo} ${JSON.stringify(error.detalle)}` : 'No lanzó error'
+    'Contrato de error uniforme: { estado, tipo, mensaje, idTraza, ruta } (Slide 26, 29, 38)',
+    cumpleContrato409,
+    'Estructura exacta del estándar de Semana 10',
+    JSON.stringify(resContrato.cuerpo)
   );
 
-  // TRAZABILIDAD Y FORMATO DE ERROR
-  const reqFalsa = { header: () => null, headers: {} };
-  const resFalsaTrazabilidad = {
-    cabeceras: {},
-    setHeader(nombre, valor) { this.cabeceras[nombre] = valor; }
-  };
-  trazabilidad(reqFalsa, resFalsaTrazabilidad, () => {});
+  let errorRutaNoEncontrada = null;
+  rutaNoEncontrada({ method: 'GET', originalUrl: '/api/vehiculo' }, {}, (err) => {
+    errorRutaNoEncontrada = err;
+  });
   registrarPrueba(
     'CP-59',
-    'Trazabilidad: asigna req.idTraza (8 caracteres) y cabecera X-Request-Id',
-    typeof reqFalsa.idTraza === 'string' && reqFalsa.idTraza.length === 8 && resFalsaTrazabilidad.cabeceras['X-Request-Id'] === reqFalsa.idTraza,
-    'idTraza de 8 caracteres y cabecera X-Request-Id coincidente',
-    `idTraza=${reqFalsa.idTraza}, header=${resFalsaTrazabilidad.cabeceras['X-Request-Id']}`
+    'rutaNoEncontrada: delega NotFoundError con next(error) (Slide 33)',
+    errorRutaNoEncontrada instanceof NotFoundError && errorRutaNoEncontrada.status === 404
+      && errorRutaNoEncontrada.message.includes('Ruta no encontrada: GET /api/vehiculo'),
+    'NotFoundError 404 con "Ruta no encontrada: GET /api/vehiculo"',
+    errorRutaNoEncontrada ? `HTTP ${errorRutaNoEncontrada.status}: ${errorRutaNoEncontrada.message}` : 'No delegó'
   );
 
-  res = respuestaFalsa();
-  const reqConTraza = { idTraza: 'abc12345', method: 'GET', originalUrl: '/api/reservas/999' };
-  manejarErrores(new NotFoundError('La reserva con id 999 no existe'), reqConTraza, res, () => {});
-  const cumpleContrato = res.codigo === 404 &&
-    res.cuerpo.estado === 404 &&
-    res.cuerpo.tipo === 'NO_ENCONTRADO' &&
-    res.cuerpo.mensaje === 'La reserva con id 999 no existe' &&
-    res.cuerpo.idTraza === 'abc12345' &&
-    res.cuerpo.ruta === 'GET /api/reservas/999';
+  const errorBad = new BadRequestError('Parámetros incorrectos');
+  const errorVal = new ValidationError([{ campo: 'codigo', mensaje: 'Obligatorio' }]);
+  const errorAuth = new UnauthorizedError('Sin llave');
+  const errorForb = new ForbiddenError('Sin rol');
+  const errorNF = new NotFoundError('No existe');
+  const errorConf = new ConflictError('Conflicto');
+  const jerarquiaCorrecta = errorBad.estado === 400 && errorBad.tipo === 'SOLICITUD_INVALIDA'
+    && errorVal.estado === 400 && errorVal.tipo === 'VALIDACION'
+    && errorAuth.estado === 401 && errorAuth.tipo === 'NO_AUTENTICADO'
+    && errorForb.estado === 403 && errorForb.tipo === 'SIN_PERMISO'
+    && errorNF.estado === 404 && errorNF.tipo === 'NO_ENCONTRADO'
+    && errorConf.estado === 409 && errorConf.tipo === 'CONFLICTO'
+    && (errorNF instanceof AppError) && (errorNF instanceof HttpError);
   registrarPrueba(
     'CP-60',
-    'Contrato de error: respuesta estándar con { estado, tipo, mensaje, idTraza, ruta }',
-    cumpleContrato,
-    'Respuesta completa del contrato de error',
-    JSON.stringify(res.cuerpo)
-  );
-
-  let errAuth = null;
-  autenticar({ header: () => null }, {}, (err) => { errAuth = err; });
-  let errRol = null;
-  autorizar('admin')({ header: () => 'recepcion' }, {}, (err) => { errRol = err; });
-  registrarPrueba(
-    'CP-61',
-    'Autenticación y Autorización (401 y 403): UnauthorizedError y ForbiddenError',
-    errAuth instanceof UnauthorizedError && errAuth.estado === 401 && errAuth.tipo === 'NO_AUTENTICADO' &&
-    errRol instanceof ForbiddenError && errRol.estado === 403 && errRol.tipo === 'SIN_PERMISO',
-    '401 NO_AUTENTICADO y 403 SIN_PERMISO',
-    `auth=${errAuth && errAuth.estado} (${errAuth && errAuth.tipo}), rol=${errRol && errRol.estado} (${errRol && errRol.tipo})`
+    'Clases de error semánticas: tipos, códigos HTTP e interoperabilidad con HttpError (Slide 23)',
+    jerarquiaCorrecta,
+    'Códigos 400, 401, 403, 404, 409 tipados correctamente',
+    'AppError status y tipos consistentes'
   );
 
   // Restaurar repositorios originales
@@ -832,7 +874,6 @@ async function ejecutarSuite() {
   Object.assign(serviciosRepository, origServicios);
   Object.assign(catalogoRepository, origCatalogo);
   Object.assign(reservaRepository, origReserva);
-  Object.assign(lookupsRepository, origLookups);
 
   // Resumen final
   console.log('\n===============================================================');
