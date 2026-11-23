@@ -1,5 +1,6 @@
-// Ayudas compartidas por las pruebas de integración (Semana 11, Slides 29 a 31).
+// Ayudas compartidas por las pruebas (Semana 11, Slides 29 a 31).
 // Arma la app real de Express sobre repositorios en memoria: no necesita MySQL ni Docker.
+// Lo que se repite en muchas pruebas vive aquí; lo que cambia en cada una queda a la vista.
 
 // La llave de pruebas existe solo aquí; la real vive en el .env de cada integrante
 const LLAVE_DE_PRUEBA = 'llave-solo-para-pruebas';
@@ -18,7 +19,9 @@ const LECTOR = { 'x-api-key': LLAVE_DE_PRUEBA };
 const RECEPCION = { 'x-api-key': LLAVE_DE_PRUEBA, 'x-rol': 'recepcion' };
 const ADMIN = { 'x-api-key': LLAVE_DE_PRUEBA, 'x-rol': 'admin' };
 
-// El contrato de TODO error de la API (Semana 10): si una respuesta cambia de formato, falla aquí
+// Contrato de TODO error de la API (Semana 10):
+// { estado, tipo, mensaje, idTraza, ruta } y la cabecera X-Request-Id igual a idTraza.
+// Si una respuesta cambia de formato, falla aquí.
 function esperarError(res, estado, tipo) {
   expect(res.status).toBe(estado);
   expect(res.body).toMatchObject({ estado, tipo });
@@ -38,6 +41,17 @@ function esperarValidacion(res) {
   return res.body.errores.map((error) => error.campo);
 }
 
+// Campos que fallaron en un 400 de express-validator: ['anio', 'modelo']
+const camposConError = (res) => (res.body.errores || []).map((e) => e.campo).sort();
+
+// res falso para probar un middleware sin levantar la API
+const crearRes = () => {
+  const res = {};
+  res.status = jest.fn().mockReturnValue(res);
+  res.json = jest.fn().mockReturnValue(res);
+  return res;
+};
+
 module.exports = {
   request,
   app,
@@ -48,5 +62,7 @@ module.exports = {
   LLAVE_DE_PRUEBA,
   esperarError,
   esperarValidacion,
+  camposConError,
+  crearRes,
   reiniciarDatos: bd.reiniciarDatos,
 };

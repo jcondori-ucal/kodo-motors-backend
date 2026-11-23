@@ -18,7 +18,7 @@ Evidencia Evaluativa 2): sedes, servicios, catálogo de vehículos, reservas, re
 8. [Endpoints principales](#8-endpoints-principales)
 9. [Base de datos](#9-base-de-datos)
 10. [Observaciones y problemas resueltos durante la integración](#10-observaciones-y-problemas-resueltos-durante-la-integración)
-11. [EE3 · Sedes y Servicios: seguridad, pruebas y documentación](#11-ee3--sedes-y-servicios-seguridad-pruebas-y-documentación)
+11. [EE3 · Validaciones, pruebas y documentación (Grupo 3)](#11-ee3--validaciones-pruebas-y-documentación-grupo-3)
 
 ---
 
@@ -111,9 +111,12 @@ kodo-motor-backend/
 │   ├── middlewares/           # auth, trazabilidad, validarId, manejarErrores
 │   ├── validators/            # reglas de express-validator por recurso
 │   └── utils/                 # HttpError, validaciones
-├── tests/                     # Jest: unit/, integracion/ y helpers/  (npm test)
-├── docs/                      # documentación técnica, informe de pruebas y evidencias
-├── test-suite.js              # npm run test:suite
+├── tests/                     # npm test (Jest + Supertest)
+│   ├── helpers/api.js         # app, esperarError y ayudas compartidas
+│   ├── unit/                  # clases de error y manejador central
+│   └── integracion/           # la API por HTTP, con el repositorio simulado
+├── docs/                      # documentación técnica y registro de pruebas
+├── test-suite.js              # npm run test:suite (verificación de la EE2)
 ├── docker-compose.yml         # MySQL 8.4 y Adminer
 └── .env.example               # qué variables hay que definir (sin credenciales)
 ```
@@ -133,6 +136,9 @@ kodo-motor-backend/
 | Jest | 30 | Pruebas unitarias y de integración |
 | Supertest | 7 | Peticiones HTTP a la app sin levantar el servidor |
 | nodemon | 3.1 | Reinicia la API al guardar cambios |
+| express-validator | 7.3 | Valida y limpia los datos de entrada |
+| Jest | 30 | Pruebas automáticas |
+| Supertest | 7.3 | Peticiones HTTP a la API dentro de las pruebas |
 | Postman | — | Pruebas de los endpoints |
 
 ## 6. Instalación
@@ -177,11 +183,10 @@ Comprobación rápida: `GET http://localhost:4000/api/salud`.
 |---|---|
 | `npm run dev` | API con reinicio automático |
 | `npm start` | API sin nodemon |
-| `npm test` | 333 pruebas de Jest (unitarias e integración), sin necesidad de base de datos |
-| `npm run test:unit` / `test:integracion` | Solo un nivel de pruebas |
-| `npm run cobertura` | Jest con reporte de cobertura |
-| `npm run test:suite` | Suite anterior del proyecto: 61 casos (`test-suite.js`) |
-| `npm run test:todo` | Suite anterior + Jest |
+| `npm test` | Pruebas automáticas con Jest y Supertest, sin necesidad de base de datos |
+| `npm run test:unit` / `test:integracion` | Solo las pruebas unitarias o solo las de integración |
+| `npm run cobertura` | Pruebas con reporte de cobertura |
+| `npm run test:suite` | 61 pruebas de verificación de la EE2 (`test-suite.js`) |
 | `npm run bd:levantar` / `bd:detener` | Levanta o detiene MySQL |
 | `npm run bd:reiniciar` | Borra la base y la vuelve a crear desde `database/` |
 
@@ -225,7 +230,7 @@ Formato de error único y seguro en toda la API (Semana 10):
 }
 ```
 
-En sedes, servicios, catálogo y reservas, los errores de formato llegan así, por campo. Las reglas
+En sedes, servicios, catálogo, reservas y repuestos, los errores de formato llegan así, por campo. Las reglas
 que consultan la base responden `{ "mensaje": "..." }`, a veces con `errores` como lista de textos.
 
 La bandera de baja (`activo` / `activa`) **no se envía** en `POST` ni `PUT`: solo cambia con `DELETE`.
@@ -299,38 +304,29 @@ En ese caso, en el `.env`: `DB_PORT=3306` (o el puerto de tu MySQL).
   `historial/u2/archivo-reservas`, `historial/u2/jeff` y `historial/g14/feature/encuestas-qa-docs`.
 - Cada paso de la fusión es un commit aparte con el formato `[TAG] módulo: descripción`.
 
-## 11. EE3 · Sedes y Servicios: seguridad, pruebas y documentación
+## 11. EE3 · Validaciones, pruebas y documentación (Grupo 3)
 
-Mejoras de la Evidencia Evaluativa 3 sobre los recursos `/api/sedes` y `/api/servicios`.
+El Grupo 3 trabajó los módulos de **Repuestos** y **Catálogo** en la rama `Grupo_3-ee3`.
 
-| Entregable | Dónde está |
+| Qué se hizo | Dónde está |
 |---|---|
-| API validada y con manejo de errores | `src/validators/`, `src/middlewares/`, `src/models/` |
-| Pruebas unitarias y de integración | `tests/` · informe en [docs/PRUEBAS-SEDES-SERVICIOS.md](docs/PRUEBAS-SEDES-SERVICIOS.md) |
-| Documentación técnica de los endpoints | [docs/API-SEDES-SERVICIOS.md](docs/API-SEDES-SERVICIOS.md) |
-| Evidencias de las corridas | [docs/evidencias/](docs/evidencias/) |
-| Pruebas manuales con aserciones | `postman/kodo-sedes-servicios-pruebas.postman_collection.json` |
+| Validaciones de repuestos con `express-validator` (obligatorios, formatos, tipos y rangos) | `src/validators/repuestos.validators.js` |
+| Mismo formato de error en repuestos y catálogo: `errores: [{ campo, mensaje }]` | `src/routes/repuestos.routes.js` |
+| Base de pruebas con Jest y Supertest | `package.json`, `tests/helpers/api.js` |
+| Pruebas unitarias y de integración | `tests/unit/`, `tests/integracion/` |
+| Pruebas funcionales en Postman con aserciones (`pm.test`) | `postman/kodo-motors-grupo3-repuestos-catalogo.postman_collection.json` |
 
-### Cómo probar
+**Documentación**
+
+- [Documentación técnica de Repuestos y Catálogo](docs/API_REPUESTOS_CATALOGO.md): endpoints,
+  parámetros, cuerpos, ejemplos de éxito y de error, y códigos HTTP.
+- [Pruebas y registro de errores](docs/PRUEBAS_Y_REGISTRO_DE_ERRORES.md): cómo ejecutar las
+  pruebas, tabla de casos, resultados, errores encontrados y su corrección.
+
+**Probar en un minuto** (sin base de datos):
 
 ```bash
 npm install
 npm test
 ```
-
-No hace falta MySQL: Jest usa una base en memoria con los datos del seed. Para la colección de
-Postman sí: levantar la base y la API, importar la colección y poner en su variable `apiKey` el
-valor de `API_KEY` del `.env`. Las dos colecciones anteriores también piden esa variable
-(`apiKey` y `apiKeyValida`).
-
-### Errores encontrados y mejoras aplicadas
-
-| Error encontrado | Mejora aplicada |
-|---|---|
-| Las rutas de sedes y servicios respondían sin credencial | `x-api-key` obligatoria en todas; `x-rol: admin` en POST, PUT y DELETE |
-| La llave de la API estaba escrita en el código y en una colección de Postman | Se lee solo de `API_KEY` en `.env`; sin ella la API no arranca |
-| Los 400 por regla de negocio devolvían `errores` como textos y los de formato como `{ campo, mensaje }` | Los modelos de sede y servicio emiten `{ campo, mensaje }`; un solo formato |
-| Un campo desconocido respondía con otro formato de error | Middleware `soloCamposPermitidos` con un error por campo |
-| 16 pruebas fallaban por filas de distinto largo en `test.each` | Error de la prueba: se corrigió la prueba, no el código |
-
-El detalle de cada uno (cómo se detectó, causa y corrección) está en el informe de pruebas.
+profe fusione a main por error no nos jalee jaja :(

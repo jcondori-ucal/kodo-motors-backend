@@ -1,20 +1,17 @@
-// Unitarias del manejador central de errores y de soloCamposPermitidos, con res simulado (Semana 11, Slide 33)
-const { manejarErrores, rutaNoEncontrada } = require('../../src/middlewares/manejarErrores');
+// Unitarias del manejador central de errores (Semanas 10 y 11, Slide 33), de soloCamposPermitidos y de validarId.
+// Se le pasan req y res falsos: no hace falta levantar la API ni la base de datos.
+const { manejarErrores, rutaNoEncontrada, traducir } = require('../../src/middlewares/manejarErrores');
 const { soloCamposPermitidos } = require('../../src/validators/common');
+const validarId = require('../../src/middlewares/validarId');
 const {
   NotFoundError, ConflictError, ValidationError, BadRequestError,
 } = require('../../src/middlewares/errors/AppError');
-
-const crearRes = () => {
-  const res = {};
-  res.status = jest.fn().mockReturnValue(res);
-  res.json = jest.fn().mockReturnValue(res);
-  return res;
-};
+const { crearRes } = require('../helpers/api');
 
 const req = { idTraza: 'abc12345', method: 'GET', originalUrl: '/api/sedes/99' };
 const cuerpoDe = (res) => res.json.mock.calls[0][0];
 
+// El handler escribe en consola los errores inesperados: se silencia para no ensuciar la salida.
 let consola;
 beforeEach(() => { consola = jest.spyOn(console, 'error').mockImplementation(() => {}); });
 afterEach(() => consola.mockRestore());
@@ -105,6 +102,26 @@ describe('manejarErrores · errores inesperados (500) no filtran datos internos'
   });
 });
 
+describe('traducir · errores de librerías y de MySQL', () => {
+  test.each([
+    ['JSON mal formado', { type: 'entity.parse.failed' }, 400, 'SOLICITUD_INVALIDA'],
+    ['cuerpo de más de 10 KB', { type: 'entity.too.large' }, 413, 'CUERPO_MUY_GRANDE'],
+    ['registro duplicado (UNIQUE)', { code: 'ER_DUP_ENTRY' }, 409, 'CONFLICTO'],
+    ['llave foránea inexistente', { code: 'ER_NO_REFERENCED_ROW_2' }, 400, 'SOLICITUD_INVALIDA'],
+    ['MySQL apagado', { code: 'ECONNREFUSED' }, 503, 'SERVICIO_NO_DISPONIBLE'],
+    ['base de datos inexistente', { code: 'ER_BAD_DB_ERROR' }, 503, 'SERVICIO_NO_DISPONIBLE'],
+  ])('%s → %i %s', (_nombre, error, estado, tipo) => {
+    const traducido = traducir(error);
+
+    expect(traducido.estado).toBe(estado);
+    expect(traducido.tipo).toBe(tipo);
+  });
+
+  test('un error desconocido no se traduce (lo atiende el 500)', () => {
+    expect(traducir(new Error('algo raro'))).toBeNull();
+  });
+});
+
 describe('rutaNoEncontrada', () => {
   test('delega un NotFoundError que nombra el método y la ruta', () => {
     const next = jest.fn();
@@ -151,4 +168,31 @@ describe('soloCamposPermitidos', () => {
       expect(next.mock.calls[0][0]).toBeInstanceOf(BadRequestError);
     },
   );
+});
+
+// validarId protege las rutas /api/repuestos/:id
+describe('validarId · el :id debe ser un entero positivo', () => {
+  test.each([
+    ['1', 'el menor id válido'],
+    ['25', 'un id normal'],
+  ])('id "%s" pasa (%s)', (id) => {
+    const next = jest.fn();
+
+    validarId({ params: { id } }, {}, next);
+
+    expect(next).toHaveBeenCalledWith(); // sin error
+  });
+
+  test.each([
+    ['0', 'justo debajo del límite'],
+    ['-1', 'negativo'],
+    ['1.5', 'decimal'],
+    ['abc', 'texto'],
+  ])('id "%s" se rechaza con 400 (%s)', (id) => {
+    const next = jest.fn();
+
+    validarId({ params: { id } }, {}, next);
+
+    expect(next.mock.calls[0][0].estado).toBe(400);
+  });
 });
