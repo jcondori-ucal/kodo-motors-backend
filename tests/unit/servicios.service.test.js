@@ -48,7 +48,10 @@ describe('crearServicio', () => {
   test('nombre repetido → ConflictError y NO guarda', async () => {
     repo.buscarPorNombre.mockResolvedValue({ id: 1, activo: true });
 
-    await expect(servicio.crearServicio(servicioNuevo)).rejects.toThrow(ConflictError);
+    const promesa = servicio.crearServicio(servicioNuevo);
+
+    await expect(promesa).rejects.toThrow(ConflictError);
+    await expect(promesa).rejects.toThrow(/Ya existe/);
     expect(repo.crear).not.toHaveBeenCalled();
   });
 
@@ -62,6 +65,11 @@ describe('crearServicio', () => {
   test('precio 0 → ValidationError antes de consultar la base', async () => {
     await expect(servicio.crearServicio({ ...servicioNuevo, precio: 0 })).rejects.toThrow(ValidationError);
     expect(repo.buscarPorNombre).not.toHaveBeenCalled();
+  });
+
+  test.each([14, 481])('duración %i fuera de rango → 400 y NO guarda', async (duracion_min) => {
+    await expect(servicio.crearServicio({ ...servicioNuevo, duracion_min })).rejects.toMatchObject({ status: 400 });
+    expect(repo.crear).not.toHaveBeenCalled();
   });
 });
 
@@ -110,7 +118,10 @@ describe('eliminarServicio (borrado lógico)', () => {
   test('con citas pendientes → ConflictError y NO da de baja', async () => {
     repoReservas.contarCitasPendientesDeServicio.mockResolvedValue(2);
 
-    await expect(servicio.eliminarServicio(1)).rejects.toThrow(ConflictError);
+    const promesa = servicio.eliminarServicio(1);
+
+    await expect(promesa).rejects.toThrow(ConflictError);
+    await expect(promesa).rejects.toThrow(/citas generadas pendientes/);
     expect(repo.eliminar).not.toHaveBeenCalled();
   });
 
