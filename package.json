@@ -31,12 +31,6 @@
   "author": "Equipos E03, u2 y Grupo1-4 · EE2 Fundamentos de Desarrollo Back-End, UCAL",
   "license": "ISC",
   "private": true,
-  "jest": {
-    "testEnvironment": "node",
-    "roots": [
-      "<rootDir>/tests"
-    ]
-  },
   "engines": {
     "node": ">=18"
   },
